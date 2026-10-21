@@ -1,0 +1,12 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/LvvErp.Api/LvvErp.Api.csproj" />
+    <Project Path="src/LvvErp.Application/LvvErp.Application.csproj" />
+    <Project Path="src/LvvErp.Domain/LvvErp.Domain.csproj" />
+    <Project Path="src/LvvErp.Infrastructure/LvvErp.Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/LvvErp.IntegrationTests/LvvErp.IntegrationTests.csproj" />
+    <Project Path="tests/LvvErp.UnitTests/LvvErp.UnitTests.csproj" />
+  </Folder>
+</Solution>
