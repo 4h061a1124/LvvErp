@@ -1,4 +1,5 @@
 using LvvErp.Domain.Features.Identity;
+using LvvErp.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -13,7 +14,7 @@ public sealed class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(u => u.UserName).HasMaxLength(50);
         builder.HasIndex(u => u.UserName).IsUnique();
 
-        builder.Property(u => u.FullName).HasMaxLength(200);
+        builder.Property(u => u.FullName).HasMaxLength(200).UseCollation(AppDbContext.VietnameseCollation);
         builder.Property(u => u.Email).HasMaxLength(200);
         builder.Property(u => u.PasswordHash).HasMaxLength(500);
         builder.Property(u => u.CreatedBy).HasMaxLength(50);

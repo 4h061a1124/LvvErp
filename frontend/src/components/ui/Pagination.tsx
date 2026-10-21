@@ -20,7 +20,7 @@ export function Pagination({ page, pageSize, total, onPageChange, onPageSizeChan
   return (
     <div className="flex items-center justify-between gap-3 border-t border-zinc-200 px-3 py-2 text-[13px] text-zinc-600">
       <label className="flex items-center gap-2">
-        <span className="hidden sm:inline">{t('employees.pager.perPage')}</span>
+        <span className="hidden sm:inline">{t('pager.perPage')}</span>
         <select
           value={pageSize}
           onChange={(e) => onPageSizeChange(Number(e.target.value))}
@@ -35,13 +35,13 @@ export function Pagination({ page, pageSize, total, onPageChange, onPageSizeChan
       </label>
 
       <div className="flex items-center gap-1">
-        <span className="tabular mr-2">{t('employees.pager.range', { from, to, total })}</span>
+        <span className="tabular mr-2">{t('pager.range', { from, to, total })}</span>
         <button
           type="button"
           onClick={() => onPageChange(page - 1)}
           disabled={page <= 1}
           className="rounded-[3px] border border-zinc-300 bg-white p-1 hover:bg-zinc-50 disabled:opacity-40"
-          aria-label={t('employees.pager.prev')}
+          aria-label={t('pager.prev')}
         >
           <ChevronLeft size={16} />
         </button>
@@ -50,7 +50,7 @@ export function Pagination({ page, pageSize, total, onPageChange, onPageSizeChan
           onClick={() => onPageChange(page + 1)}
           disabled={page >= totalPages}
           className="rounded-[3px] border border-zinc-300 bg-white p-1 hover:bg-zinc-50 disabled:opacity-40"
-          aria-label={t('employees.pager.next')}
+          aria-label={t('pager.next')}
         >
           <ChevronRight size={16} />
         </button>

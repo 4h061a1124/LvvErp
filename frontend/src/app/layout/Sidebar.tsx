@@ -1,5 +1,5 @@
 import clsx from 'clsx'
-import { LayoutGrid, Users, X } from 'lucide-react'
+import { ArrowDownToLine, ArrowLeftRight, ArrowUpFromLine, Boxes, ClipboardList, FolderTree, LayoutGrid, Package, Ruler, Users, Warehouse, X } from 'lucide-react'
 import type { ComponentType } from 'react'
 import { useTranslation } from 'react-i18next'
 import { NavLink } from 'react-router'
@@ -18,6 +18,25 @@ interface NavItem {
 const sections: { title?: NavKey; items: NavItem[] }[] = [
   { items: [{ to: '/', label: 'overview', icon: LayoutGrid, end: true }] },
   { title: 'hr', items: [{ to: '/employees', label: 'employees', icon: Users }] },
+  {
+    title: 'inventory',
+    items: [
+      { to: '/inventory/stock', label: 'stock', icon: Boxes },
+      { to: '/inventory/receipts', label: 'receipts', icon: ArrowDownToLine },
+      { to: '/inventory/issues', label: 'issues', icon: ArrowUpFromLine },
+      { to: '/inventory/transfers', label: 'transfers', icon: ArrowLeftRight },
+      { to: '/inventory/stock-card', label: 'stockCard', icon: ClipboardList },
+    ],
+  },
+  {
+    title: 'inventoryCatalog',
+    items: [
+      { to: '/inventory/materials', label: 'materials', icon: Package },
+      { to: '/inventory/material-groups', label: 'materialGroups', icon: FolderTree },
+      { to: '/inventory/units', label: 'units', icon: Ruler },
+      { to: '/inventory/warehouses', label: 'warehouses', icon: Warehouse },
+    ],
+  },
 ]
 
 export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
@@ -34,7 +53,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
 
       <aside
         className={clsx(
-          'fixed inset-y-0 left-0 z-40 flex w-60 flex-col border-r border-zinc-200 bg-white transition-transform duration-150',
+          'fixed inset-y-0 left-0 z-40 flex w-60 flex-col border-r border-zinc-200 bg-white transition-transform duration-150 print:hidden',
           'lg:w-56 lg:translate-x-0',
           open ? 'translate-x-0' : '-translate-x-full',
         )}

@@ -1,7 +1,9 @@
 import clsx from 'clsx'
+import { useQueryClient } from '@tanstack/react-query'
 import { Search } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { ImportDialog } from '@/components/ImportDialog'
 import { Button } from '@/components/ui/Button'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { Input, Select } from '@/components/ui/Field'
@@ -12,11 +14,11 @@ import { useAuth } from '@/lib/auth-context'
 import { getErrorMessage } from '@/lib/errors'
 import { useDebouncedValue } from '@/lib/hooks'
 import { Permissions } from '@/lib/permissions'
-import { useDeleteEmployee, useDepartments, useEmployees } from './api'
+import { employeeKeys, useDeleteEmployee, useDepartments, useEmployees } from './api'
 import { EmployeeFormDialog } from './components/EmployeeFormDialog'
 import { EmployeeList } from './components/EmployeeList'
 import { EmployeeTable } from './components/EmployeeTable'
-import { ImportDialog } from './components/ImportDialog'
+import { importColumnLabel } from './importErrors'
 import { EMPLOYEE_STATUSES, type Employee, type EmployeeStatus } from './types'
 import { useEmployeeFilters } from './useEmployeeFilters'
 
@@ -30,6 +32,7 @@ export function EmployeesPage() {
   const employees = useEmployees(queryParams)
   const departments = useDepartments()
   const deleteEmployee = useDeleteEmployee()
+  const queryClient = useQueryClient()
 
   // Typing updates the URL after a pause; only react when the debounced text itself changes,
   // otherwise a stale value would undo "Clear" before the debounce catches up.
@@ -185,7 +188,20 @@ export function EmployeesPage() {
           {formOpen && (
             <EmployeeFormDialog employee={editing} onClose={() => setFormOpen(false)} onDelete={setDeleting} />
           )}
-          {importOpen && <ImportDialog onClose={() => setImportOpen(false)} />}
+          {importOpen && (
+            <ImportDialog
+              title={t('employees.importDialog.title')}
+              step1={t('employees.importDialog.step1')}
+              templateUrl="/employees/import/template"
+              templateFileName="mau-import-nhan-vien.xlsx"
+              importUrl="/employees/import"
+              updateExistingLabel={t('employees.importDialog.updateExisting')}
+              updateExistingHint={t('employees.importDialog.updateExistingHint')}
+              columnLabel={(column) => importColumnLabel(column, t)}
+              onImported={() => queryClient.invalidateQueries({ queryKey: employeeKeys.all })}
+              onClose={() => setImportOpen(false)}
+            />
+          )}
           <ConfirmDialog
             open={!!deleting}
             title={t('employees.delete.title')}

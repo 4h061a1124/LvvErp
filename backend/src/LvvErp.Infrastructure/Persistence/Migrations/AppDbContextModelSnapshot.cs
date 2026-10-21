@@ -18,6 +18,7 @@ namespace LvvErp.Infrastructure.Persistence.Migrations
         {
 #pragma warning disable 612, 618
             modelBuilder
+                .HasAnnotation("Npgsql:CollationDefinition:vi_vn", "vi-VN,vi-VN,icu,True")
                 .HasAnnotation("ProductVersion", "10.0.13")
                 .HasAnnotation("Relational:MaxIdentifierLength", 63);
 
@@ -27,7 +28,6 @@ namespace LvvErp.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("LvvErp.Domain.Features.Employees.Department", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
@@ -50,7 +50,8 @@ namespace LvvErp.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)")
-                        .HasColumnName("name");
+                        .HasColumnName("name")
+                        .UseCollation("vi_vn");
 
                     b.Property<int>("SortOrder")
                         .HasColumnType("integer")
@@ -82,7 +83,6 @@ namespace LvvErp.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("LvvErp.Domain.Features.Employees.Employee", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
@@ -123,7 +123,8 @@ namespace LvvErp.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)")
-                        .HasColumnName("full_name");
+                        .HasColumnName("full_name")
+                        .UseCollation("vi_vn");
 
                     b.Property<bool>("IsDeleted")
                         .HasColumnType("boolean")
@@ -181,7 +182,6 @@ namespace LvvErp.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("LvvErp.Domain.Features.Employees.Position", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
@@ -204,7 +204,8 @@ namespace LvvErp.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("character varying(100)")
-                        .HasColumnName("name");
+                        .HasColumnName("name")
+                        .UseCollation("vi_vn");
 
                     b.Property<int>("SortOrder")
                         .HasColumnType("integer")
@@ -236,7 +237,6 @@ namespace LvvErp.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("LvvErp.Domain.Features.Identity.User", b =>
                 {
                     b.Property<Guid>("Id")
-                        .ValueGeneratedOnAdd()
                         .HasColumnType("uuid")
                         .HasColumnName("id");
 
@@ -262,7 +262,8 @@ namespace LvvErp.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasMaxLength(200)
                         .HasColumnType("character varying(200)")
-                        .HasColumnName("full_name");
+                        .HasColumnName("full_name")
+                        .UseCollation("vi_vn");
 
                     b.Property<bool>("IsActive")
                         .HasColumnType("boolean")
@@ -316,6 +317,726 @@ namespace LvvErp.Infrastructure.Persistence.Migrations
                     b.ToTable("users", (string)null);
                 });
 
+            modelBuilder.Entity("LvvErp.Domain.Features.Inventory.DocumentSequence", b =>
+                {
+                    b.Property<string>("Prefix")
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("prefix");
+
+                    b.Property<int>("Year")
+                        .HasColumnType("integer")
+                        .HasColumnName("year");
+
+                    b.Property<int>("LastNumber")
+                        .HasColumnType("integer")
+                        .HasColumnName("last_number");
+
+                    b.HasKey("Prefix", "Year")
+                        .HasName("pk_document_sequences");
+
+                    b.ToTable("document_sequences", (string)null);
+                });
+
+            modelBuilder.Entity("LvvErp.Domain.Features.Inventory.Location", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("code");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("Description")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("description");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("updated_by");
+
+                    b.Property<Guid>("WarehouseId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("warehouse_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_locations");
+
+                    b.HasIndex("WarehouseId", "Code")
+                        .IsUnique()
+                        .HasDatabaseName("ix_locations_warehouse_id_code");
+
+                    b.ToTable("locations", (string)null);
+                });
+
+            modelBuilder.Entity("LvvErp.Domain.Features.Inventory.Lot", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateOnly?>("ExpiryDate")
+                        .HasColumnType("date")
+                        .HasColumnName("expiry_date");
+
+                    b.Property<string>("LotNumber")
+                        .IsRequired()
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("lot_number");
+
+                    b.Property<DateOnly?>("ManufactureDate")
+                        .HasColumnType("date")
+                        .HasColumnName("manufacture_date");
+
+                    b.Property<Guid>("MaterialId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("material_id");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_lots");
+
+                    b.HasIndex("MaterialId", "LotNumber")
+                        .IsUnique()
+                        .HasDatabaseName("ix_lots_material_id_lot_number");
+
+                    b.ToTable("lots", (string)null);
+                });
+
+            modelBuilder.Entity("LvvErp.Domain.Features.Inventory.Material", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("code");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("created_by");
+
+                    b.Property<Guid>("GroupId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("group_id");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
+
+                    b.Property<decimal>("MinStock")
+                        .HasPrecision(18, 3)
+                        .HasColumnType("numeric(18,3)")
+                        .HasColumnName("min_stock");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("name")
+                        .UseCollation("vi_vn");
+
+                    b.Property<string>("PhotoPath")
+                        .HasMaxLength(300)
+                        .HasColumnType("character varying(300)")
+                        .HasColumnName("photo_path");
+
+                    b.Property<string>("Specification")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("specification");
+
+                    b.Property<bool>("TrackLots")
+                        .HasColumnType("boolean")
+                        .HasColumnName("track_lots");
+
+                    b.Property<Guid>("UnitId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("unit_id");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_materials");
+
+                    b.HasIndex("Code")
+                        .IsUnique()
+                        .HasDatabaseName("ix_materials_code");
+
+                    b.HasIndex("GroupId")
+                        .HasDatabaseName("ix_materials_group_id");
+
+                    b.HasIndex("UnitId")
+                        .HasDatabaseName("ix_materials_unit_id");
+
+                    b.ToTable("materials", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_materials_min_stock", "min_stock >= 0");
+                        });
+                });
+
+            modelBuilder.Entity("LvvErp.Domain.Features.Inventory.MaterialGroup", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("code");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("created_by");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("name")
+                        .UseCollation("vi_vn");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_material_groups");
+
+                    b.HasIndex("Code")
+                        .IsUnique()
+                        .HasDatabaseName("ix_material_groups_code");
+
+                    b.HasIndex("Name")
+                        .IsUnique()
+                        .HasDatabaseName("ix_material_groups_name");
+
+                    b.ToTable("material_groups", (string)null);
+                });
+
+            modelBuilder.Entity("LvvErp.Domain.Features.Inventory.StockBalance", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid?>("LocationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("location_id");
+
+                    b.Property<Guid?>("LotId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("lot_id");
+
+                    b.Property<Guid>("MaterialId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("material_id");
+
+                    b.Property<decimal>("Quantity")
+                        .HasPrecision(18, 3)
+                        .HasColumnType("numeric(18,3)")
+                        .HasColumnName("quantity");
+
+                    b.Property<DateTimeOffset>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<Guid>("WarehouseId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("warehouse_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_stock_balances");
+
+                    b.HasIndex("LocationId")
+                        .HasDatabaseName("ix_stock_balances_location_id");
+
+                    b.HasIndex("LotId")
+                        .HasDatabaseName("ix_stock_balances_lot_id");
+
+                    b.HasIndex("WarehouseId")
+                        .HasDatabaseName("ix_stock_balances_warehouse_id");
+
+                    b.HasIndex("MaterialId", "WarehouseId", "LocationId", "LotId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_stock_balances_material_id_warehouse_id_location_id_lot_id");
+
+                    NpgsqlIndexBuilderExtensions.AreNullsDistinct(b.HasIndex("MaterialId", "WarehouseId", "LocationId", "LotId"), false);
+
+                    b.ToTable("stock_balances", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_stock_balances_quantity", "quantity >= 0");
+                        });
+                });
+
+            modelBuilder.Entity("LvvErp.Domain.Features.Inventory.StockDocument", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset?>("ApprovedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("approved_at");
+
+                    b.Property<string>("ApprovedBy")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("approved_by");
+
+                    b.Property<string>("CancelReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("cancel_reason");
+
+                    b.Property<DateTimeOffset?>("CancelledAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("cancelled_at");
+
+                    b.Property<string>("CancelledBy")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("cancelled_by");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("created_by");
+
+                    b.Property<Guid?>("DepartmentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("department_id");
+
+                    b.Property<DateOnly>("DocumentDate")
+                        .HasColumnType("date")
+                        .HasColumnName("document_date");
+
+                    b.Property<Guid?>("EmployeeId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("employee_id");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("note");
+
+                    b.Property<string>("Number")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("number");
+
+                    b.Property<string>("Partner")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("partner");
+
+                    b.Property<string>("Reason")
+                        .HasMaxLength(30)
+                        .HasColumnType("character varying(30)")
+                        .HasColumnName("reason");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("status");
+
+                    b.Property<Guid?>("ToWarehouseId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("to_warehouse_id");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("type");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("updated_by");
+
+                    b.Property<Guid>("WarehouseId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("warehouse_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_stock_documents");
+
+                    b.HasIndex("DepartmentId")
+                        .HasDatabaseName("ix_stock_documents_department_id");
+
+                    b.HasIndex("EmployeeId")
+                        .HasDatabaseName("ix_stock_documents_employee_id");
+
+                    b.HasIndex("Number")
+                        .IsUnique()
+                        .HasDatabaseName("ix_stock_documents_number");
+
+                    b.HasIndex("ToWarehouseId")
+                        .HasDatabaseName("ix_stock_documents_to_warehouse_id");
+
+                    b.HasIndex("WarehouseId")
+                        .HasDatabaseName("ix_stock_documents_warehouse_id");
+
+                    b.HasIndex("Type", "DocumentDate")
+                        .HasDatabaseName("ix_stock_documents_type_document_date");
+
+                    b.ToTable("stock_documents", (string)null);
+                });
+
+            modelBuilder.Entity("LvvErp.Domain.Features.Inventory.StockDocumentLine", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("DocumentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("document_id");
+
+                    b.Property<DateOnly?>("ExpiryDate")
+                        .HasColumnType("date")
+                        .HasColumnName("expiry_date");
+
+                    b.Property<int>("LineNo")
+                        .HasColumnType("integer")
+                        .HasColumnName("line_no");
+
+                    b.Property<Guid?>("LocationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("location_id");
+
+                    b.Property<Guid?>("LotId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("lot_id");
+
+                    b.Property<string>("LotNumber")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("lot_number");
+
+                    b.Property<DateOnly?>("ManufactureDate")
+                        .HasColumnType("date")
+                        .HasColumnName("manufacture_date");
+
+                    b.Property<Guid>("MaterialId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("material_id");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("note");
+
+                    b.Property<decimal>("Quantity")
+                        .HasPrecision(18, 3)
+                        .HasColumnType("numeric(18,3)")
+                        .HasColumnName("quantity");
+
+                    b.Property<Guid?>("ToLocationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("to_location_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_stock_document_lines");
+
+                    b.HasIndex("LocationId")
+                        .HasDatabaseName("ix_stock_document_lines_location_id");
+
+                    b.HasIndex("LotId")
+                        .HasDatabaseName("ix_stock_document_lines_lot_id");
+
+                    b.HasIndex("MaterialId")
+                        .HasDatabaseName("ix_stock_document_lines_material_id");
+
+                    b.HasIndex("ToLocationId")
+                        .HasDatabaseName("ix_stock_document_lines_to_location_id");
+
+                    b.HasIndex("DocumentId", "LineNo")
+                        .IsUnique()
+                        .HasDatabaseName("ix_stock_document_lines_document_id_line_no");
+
+                    b.ToTable("stock_document_lines", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_stock_document_lines_quantity", "quantity > 0");
+                        });
+                });
+
+            modelBuilder.Entity("LvvErp.Domain.Features.Inventory.StockTransaction", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("created_by");
+
+                    b.Property<Guid>("DocumentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("document_id");
+
+                    b.Property<Guid>("DocumentLineId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("document_line_id");
+
+                    b.Property<bool>("IsReversal")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_reversal");
+
+                    b.Property<Guid?>("LocationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("location_id");
+
+                    b.Property<Guid?>("LotId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("lot_id");
+
+                    b.Property<Guid>("MaterialId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("material_id");
+
+                    b.Property<decimal>("Quantity")
+                        .HasPrecision(18, 3)
+                        .HasColumnType("numeric(18,3)")
+                        .HasColumnName("quantity");
+
+                    b.Property<DateOnly>("TransactionDate")
+                        .HasColumnType("date")
+                        .HasColumnName("transaction_date");
+
+                    b.Property<Guid>("WarehouseId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("warehouse_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_stock_transactions");
+
+                    b.HasIndex("DocumentId")
+                        .HasDatabaseName("ix_stock_transactions_document_id");
+
+                    b.HasIndex("DocumentLineId")
+                        .HasDatabaseName("ix_stock_transactions_document_line_id");
+
+                    b.HasIndex("LocationId")
+                        .HasDatabaseName("ix_stock_transactions_location_id");
+
+                    b.HasIndex("LotId")
+                        .HasDatabaseName("ix_stock_transactions_lot_id");
+
+                    b.HasIndex("WarehouseId")
+                        .HasDatabaseName("ix_stock_transactions_warehouse_id");
+
+                    b.HasIndex("MaterialId", "TransactionDate")
+                        .HasDatabaseName("ix_stock_transactions_material_id_transaction_date");
+
+                    b.ToTable("stock_transactions", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_stock_transactions_quantity", "quantity <> 0");
+                        });
+                });
+
+            modelBuilder.Entity("LvvErp.Domain.Features.Inventory.Unit", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("code");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("created_by");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("name")
+                        .UseCollation("vi_vn");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_units");
+
+                    b.HasIndex("Code")
+                        .IsUnique()
+                        .HasDatabaseName("ix_units_code");
+
+                    b.HasIndex("Name")
+                        .IsUnique()
+                        .HasDatabaseName("ix_units_name");
+
+                    b.ToTable("units", (string)null);
+                });
+
+            modelBuilder.Entity("LvvErp.Domain.Features.Inventory.Warehouse", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("code");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("created_by");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("name")
+                        .UseCollation("vi_vn");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("note");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_warehouses");
+
+                    b.HasIndex("Code")
+                        .IsUnique()
+                        .HasDatabaseName("ix_warehouses_code");
+
+                    b.HasIndex("Name")
+                        .IsUnique()
+                        .HasDatabaseName("ix_warehouses_name");
+
+                    b.ToTable("warehouses", (string)null);
+                });
+
             modelBuilder.Entity("LvvErp.Domain.Features.Employees.Employee", b =>
                 {
                     b.HasOne("LvvErp.Domain.Features.Employees.Department", "Department")
@@ -346,6 +1067,234 @@ namespace LvvErp.Infrastructure.Persistence.Migrations
                         .HasConstraintName("fk_users_employees_employee_id");
 
                     b.Navigation("Employee");
+                });
+
+            modelBuilder.Entity("LvvErp.Domain.Features.Inventory.Location", b =>
+                {
+                    b.HasOne("LvvErp.Domain.Features.Inventory.Warehouse", "Warehouse")
+                        .WithMany("Locations")
+                        .HasForeignKey("WarehouseId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_locations_warehouses_warehouse_id");
+
+                    b.Navigation("Warehouse");
+                });
+
+            modelBuilder.Entity("LvvErp.Domain.Features.Inventory.Lot", b =>
+                {
+                    b.HasOne("LvvErp.Domain.Features.Inventory.Material", "Material")
+                        .WithMany()
+                        .HasForeignKey("MaterialId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_lots_materials_material_id");
+
+                    b.Navigation("Material");
+                });
+
+            modelBuilder.Entity("LvvErp.Domain.Features.Inventory.Material", b =>
+                {
+                    b.HasOne("LvvErp.Domain.Features.Inventory.MaterialGroup", "Group")
+                        .WithMany()
+                        .HasForeignKey("GroupId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_materials_material_groups_group_id");
+
+                    b.HasOne("LvvErp.Domain.Features.Inventory.Unit", "Unit")
+                        .WithMany()
+                        .HasForeignKey("UnitId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_materials_units_unit_id");
+
+                    b.Navigation("Group");
+
+                    b.Navigation("Unit");
+                });
+
+            modelBuilder.Entity("LvvErp.Domain.Features.Inventory.StockBalance", b =>
+                {
+                    b.HasOne("LvvErp.Domain.Features.Inventory.Location", "Location")
+                        .WithMany()
+                        .HasForeignKey("LocationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_stock_balances_locations_location_id");
+
+                    b.HasOne("LvvErp.Domain.Features.Inventory.Lot", "Lot")
+                        .WithMany()
+                        .HasForeignKey("LotId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_stock_balances_lots_lot_id");
+
+                    b.HasOne("LvvErp.Domain.Features.Inventory.Material", "Material")
+                        .WithMany()
+                        .HasForeignKey("MaterialId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_stock_balances_materials_material_id");
+
+                    b.HasOne("LvvErp.Domain.Features.Inventory.Warehouse", "Warehouse")
+                        .WithMany()
+                        .HasForeignKey("WarehouseId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_stock_balances_warehouses_warehouse_id");
+
+                    b.Navigation("Location");
+
+                    b.Navigation("Lot");
+
+                    b.Navigation("Material");
+
+                    b.Navigation("Warehouse");
+                });
+
+            modelBuilder.Entity("LvvErp.Domain.Features.Inventory.StockDocument", b =>
+                {
+                    b.HasOne("LvvErp.Domain.Features.Employees.Department", "Department")
+                        .WithMany()
+                        .HasForeignKey("DepartmentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_stock_documents_departments_department_id");
+
+                    b.HasOne("LvvErp.Domain.Features.Employees.Employee", "Employee")
+                        .WithMany()
+                        .HasForeignKey("EmployeeId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_stock_documents_employees_employee_id");
+
+                    b.HasOne("LvvErp.Domain.Features.Inventory.Warehouse", "ToWarehouse")
+                        .WithMany()
+                        .HasForeignKey("ToWarehouseId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_stock_documents_warehouses_to_warehouse_id");
+
+                    b.HasOne("LvvErp.Domain.Features.Inventory.Warehouse", "Warehouse")
+                        .WithMany()
+                        .HasForeignKey("WarehouseId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_stock_documents_warehouses_warehouse_id");
+
+                    b.Navigation("Department");
+
+                    b.Navigation("Employee");
+
+                    b.Navigation("ToWarehouse");
+
+                    b.Navigation("Warehouse");
+                });
+
+            modelBuilder.Entity("LvvErp.Domain.Features.Inventory.StockDocumentLine", b =>
+                {
+                    b.HasOne("LvvErp.Domain.Features.Inventory.StockDocument", "Document")
+                        .WithMany("Lines")
+                        .HasForeignKey("DocumentId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_stock_document_lines_stock_documents_document_id");
+
+                    b.HasOne("LvvErp.Domain.Features.Inventory.Location", "Location")
+                        .WithMany()
+                        .HasForeignKey("LocationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_stock_document_lines_locations_location_id");
+
+                    b.HasOne("LvvErp.Domain.Features.Inventory.Lot", "Lot")
+                        .WithMany()
+                        .HasForeignKey("LotId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_stock_document_lines_lots_lot_id");
+
+                    b.HasOne("LvvErp.Domain.Features.Inventory.Material", "Material")
+                        .WithMany()
+                        .HasForeignKey("MaterialId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_stock_document_lines_materials_material_id");
+
+                    b.HasOne("LvvErp.Domain.Features.Inventory.Location", "ToLocation")
+                        .WithMany()
+                        .HasForeignKey("ToLocationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_stock_document_lines_locations_to_location_id");
+
+                    b.Navigation("Document");
+
+                    b.Navigation("Location");
+
+                    b.Navigation("Lot");
+
+                    b.Navigation("Material");
+
+                    b.Navigation("ToLocation");
+                });
+
+            modelBuilder.Entity("LvvErp.Domain.Features.Inventory.StockTransaction", b =>
+                {
+                    b.HasOne("LvvErp.Domain.Features.Inventory.StockDocument", "Document")
+                        .WithMany()
+                        .HasForeignKey("DocumentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_stock_transactions_stock_documents_document_id");
+
+                    b.HasOne("LvvErp.Domain.Features.Inventory.StockDocumentLine", "DocumentLine")
+                        .WithMany()
+                        .HasForeignKey("DocumentLineId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_stock_transactions_stock_document_lines_document_line_id");
+
+                    b.HasOne("LvvErp.Domain.Features.Inventory.Location", "Location")
+                        .WithMany()
+                        .HasForeignKey("LocationId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_stock_transactions_locations_location_id");
+
+                    b.HasOne("LvvErp.Domain.Features.Inventory.Lot", "Lot")
+                        .WithMany()
+                        .HasForeignKey("LotId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_stock_transactions_lots_lot_id");
+
+                    b.HasOne("LvvErp.Domain.Features.Inventory.Material", "Material")
+                        .WithMany()
+                        .HasForeignKey("MaterialId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_stock_transactions_materials_material_id");
+
+                    b.HasOne("LvvErp.Domain.Features.Inventory.Warehouse", "Warehouse")
+                        .WithMany()
+                        .HasForeignKey("WarehouseId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_stock_transactions_warehouses_warehouse_id");
+
+                    b.Navigation("Document");
+
+                    b.Navigation("DocumentLine");
+
+                    b.Navigation("Location");
+
+                    b.Navigation("Lot");
+
+                    b.Navigation("Material");
+
+                    b.Navigation("Warehouse");
+                });
+
+            modelBuilder.Entity("LvvErp.Domain.Features.Inventory.StockDocument", b =>
+                {
+                    b.Navigation("Lines");
+                });
+
+            modelBuilder.Entity("LvvErp.Domain.Features.Inventory.Warehouse", b =>
+                {
+                    b.Navigation("Locations");
                 });
 #pragma warning restore 612, 618
         }

@@ -6,7 +6,10 @@ public static class Roles
     public const string HR = "HR";
     public const string Employee = "Employee";
 
-    public static readonly IReadOnlyList<string> All = [Admin, HR, Employee];
+    /// <summary>Thủ kho.</summary>
+    public const string Storekeeper = "Storekeeper";
+
+    public static readonly IReadOnlyList<string> All = [Admin, HR, Employee, Storekeeper];
 
     public static bool IsValid(string role) => All.Contains(role);
 }

@@ -67,7 +67,7 @@ public sealed class AuthTests(ApiFactory factory) : ApiTestBase(factory)
         var me = await client.GetFromJsonAsync<CurrentUserDto>("/api/auth/me");
 
         Assert.Equal(user.Id, me!.Id);
-        Assert.Equal([Permissions.EmployeesView], me.Permissions);
+        Assert.Equal([Permissions.EmployeesView, Permissions.InventoryView], me.Permissions);
     }
 
     [Fact]

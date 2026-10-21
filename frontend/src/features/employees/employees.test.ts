@@ -1,8 +1,10 @@
 import i18n from 'i18next'
 import { describe, expect, it } from 'vitest'
+import { importErrorMessage } from '@/lib/import'
+import { checkPhoto } from '@/lib/photo'
 import { initialOf } from './format'
-import { importColumnLabel, importErrorMessage } from './importErrors'
-import { checkPhoto, employeeSchema, toEmployeeInput } from './schema'
+import { importColumnLabel } from './importErrors'
+import { employeeSchema, toEmployeeInput } from './schema'
 
 const valid = {
   code: 'nv001',
@@ -46,9 +48,9 @@ describe('employeeSchema', () => {
 describe('checkPhoto', () => {
   it('accepts small images and rejects other types or large files', () => {
     expect(checkPhoto(new File(['x'], 'a.png', { type: 'image/png' }))).toBeNull()
-    expect(checkPhoto(new File(['x'], 'a.gif', { type: 'image/gif' }))).toBe('employees.form.photoInvalid')
+    expect(checkPhoto(new File(['x'], 'a.gif', { type: 'image/gif' }))).toBe('photo.invalid')
     const big = new File([new Uint8Array(2 * 1024 * 1024 + 1)], 'big.jpg', { type: 'image/jpeg' })
-    expect(checkPhoto(big)).toBe('employees.form.photoTooLarge')
+    expect(checkPhoto(big)).toBe('photo.tooLarge')
   })
 })
 

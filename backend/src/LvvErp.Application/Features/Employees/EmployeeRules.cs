@@ -1,5 +1,6 @@
 using System.Net.Mail;
 using System.Text.RegularExpressions;
+using LvvErp.Application.Common.Files;
 using LvvErp.Application.Common.Text;
 using LvvErp.Domain.Features.Employees;
 
@@ -8,7 +9,7 @@ namespace LvvErp.Application.Features.Employees;
 /// <summary>Field rules shared by the form validator and the Excel import.</summary>
 public static partial class EmployeeRules
 {
-    public const long MaxPhotoBytes = 2 * 1024 * 1024;
+    public const long MaxPhotoBytes = PhotoRules.MaxBytes;
 
     [GeneratedRegex("^[A-Za-z0-9._-]+$")]
     public static partial Regex CodePattern();

@@ -1,6 +1,6 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { api, downloadFile } from '@/lib/api'
-import type { Employee, EmployeeInput, EmployeeListParams, ImportResult, Lookup, PagedResult } from './types'
+import { api } from '@/lib/api'
+import type { Employee, EmployeeInput, EmployeeListParams, Lookup, PagedResult } from './types'
 
 export const employeeKeys = {
   all: ['employees'] as const,
@@ -60,20 +60,3 @@ export async function deletePhoto(id: string) {
   await api.delete(`/employees/${id}/photo`)
 }
 
-export function downloadImportTemplate() {
-  return downloadFile('/employees/import/template', 'mau-import-nhan-vien.xlsx')
-}
-
-export function useImportEmployees() {
-  const queryClient = useQueryClient()
-  return useMutation({
-    mutationFn: async ({ file, updateExisting }: { file: File; updateExisting: boolean }) => {
-      const form = new FormData()
-      form.append('file', file)
-      return (await api.post<ImportResult>('/employees/import', form, { params: { updateExisting } })).data
-    },
-    onSuccess: (result) => {
-      if (result.succeeded) queryClient.invalidateQueries({ queryKey: employeeKeys.all })
-    },
-  })
-}

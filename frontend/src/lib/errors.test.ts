@@ -32,6 +32,13 @@ describe('getErrorMessage', () => {
     expect(getErrorMessage(new AxiosError('Network Error', 'ERR_NETWORK'), t)).toBe('Không kết nối được máy chủ.')
   })
 
+  it('translates known error codes before falling back to the status', () => {
+    expect(getErrorMessage(httpError(409, { errorCode: 'InUse', detail: 'This record is in use' }), t)).toBe(
+      'Mục này đang được sử dụng nên không xóa được. Hãy chuyển sang "Ngừng dùng".',
+    )
+    expect(getErrorMessage(httpError(409, { errorCode: 'SomethingNew', detail: 'Server text' }), t)).toBe('Server text')
+  })
+
   it('uses the server detail for conflicts', () => {
     expect(getErrorMessage(httpError(409, { detail: 'Employee code already exists.' }), t)).toBe(
       'Employee code already exists.',

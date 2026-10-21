@@ -127,6 +127,20 @@ public sealed class EmployeesTests(ApiFactory factory) : ApiTestBase(factory)
     }
 
     [Fact]
+    public async Task Names_sort_in_vietnamese_alphabetical_order()
+    {
+        var hr = await ClientWithRoleAsync(Roles.HR);
+        var token = Guid.NewGuid().ToString("N")[..8];
+        foreach (var name in new[] { "Ê", "Đặng", "Dương", "An", "Ơn" })
+            await CreateEmployeeAsync(hr, await NewEmployeeRequestAsync(hr, fullName: $"{name} {token}"));
+
+        var result = await hr.GetFromJsonAsync<PagedResult<EmployeeDto>>($"/api/employees?search={token}&sort=fullName", Json);
+
+        // Vietnamese alphabet: ... D, Đ, E, Ê, ... O, Ô, Ơ (the default collation puts Đ, Ê, Ơ after Z).
+        Assert.Equal(["An", "Dương", "Đặng", "Ê", "Ơn"], result!.Items.Select(e => e.FullName.Split(' ')[0]));
+    }
+
+    [Fact]
     public async Task List_supports_filters_paging_and_sorting()
     {
         var hr = await ClientWithRoleAsync(Roles.HR);

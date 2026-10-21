@@ -25,6 +25,7 @@ public interface IEmployeeService
 public sealed class EmployeeService(
     IAppDbContext db,
     IFileStorage fileStorage,
+    PhotoUploader photoUploader,
     IValidator<SaveEmployeeRequest> validator) : IEmployeeService
 {
     private const string PhotoFolder = "employees";
@@ -108,23 +109,11 @@ public sealed class EmployeeService(
     public async Task<EmployeeDto> SetPhotoAsync(Guid id, Stream content, CancellationToken ct = default)
     {
         var employee = await FindAsync(id, ct);
-
-        using var buffer = new MemoryStream();
-        await content.CopyToAsync(buffer, ct);
-        if (buffer.Length == 0 || buffer.Length > EmployeeRules.MaxPhotoBytes)
-            throw PhotoError($"Photo must be between 1 byte and {EmployeeRules.MaxPhotoBytes / 1024 / 1024} MB.");
-
-        var extension = ImageFormat.DetectExtension(buffer.GetBuffer().AsSpan(0, (int)Math.Min(buffer.Length, 16)))
-            ?? throw PhotoError("Photo must be a JPG, PNG or WEBP image.");
-
-        buffer.Position = 0;
-        var newPath = await fileStorage.SaveAsync(buffer, PhotoFolder, extension, ct);
+        var newPath = await photoUploader.SaveAsync(content, PhotoFolder, ct);
         var oldPath = employee.PhotoPath;
         employee.PhotoPath = newPath;
         await db.SaveChangesAsync(ct);
-
-        if (oldPath is not null)
-            await fileStorage.DeleteAsync(oldPath, ct);
+        await photoUploader.DeleteAsync(oldPath, ct);
 
         return await GetAsync(id, ct);
     }
@@ -168,8 +157,6 @@ public sealed class EmployeeService(
         if (failures.Count > 0)
             throw new ValidationException(failures);
     }
-
-    private static ValidationException PhotoError(string message) => new([new ValidationFailure("file", message)]);
 
     private static IQueryable<Employee> ApplySort(IQueryable<Employee> query, string? sort)
     {

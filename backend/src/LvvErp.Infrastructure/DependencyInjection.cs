@@ -1,7 +1,8 @@
 using LvvErp.Application.Common.Interfaces;
-using LvvErp.Application.Features.Employees.Import;
-using LvvErp.Infrastructure.Features.Employees;
+using LvvErp.Application.Common.Import;
 using LvvErp.Infrastructure.Features.Identity;
+using LvvErp.Infrastructure.Features.Inventory;
+using LvvErp.Infrastructure.Import;
 using LvvErp.Infrastructure.Files;
 using LvvErp.Infrastructure.Persistence;
 using LvvErp.Infrastructure.Persistence.Interceptors;
@@ -44,8 +45,11 @@ public static class DependencyInjection
         services.AddOptions<StorageOptions>().BindConfiguration(StorageOptions.SectionName);
         services.AddSingleton<IFileStorage, LocalFileStorage>();
 
-        // Employees
-        services.AddSingleton<IEmployeeExcelFile, EmployeeExcelFile>();
+        // Import
+        services.AddSingleton<IExcelImportFile, ExcelImportFile>();
+
+        // Inventory
+        services.AddScoped<IStockLedger, StockLedger>();
 
         return services;
     }

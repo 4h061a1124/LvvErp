@@ -42,6 +42,12 @@
   dialog::backdrop {
     background: rgb(24 24 27 / 0.45);
   }
+
+  @media print {
+    body {
+      background: white;
+    }
+  }
 }
 
 @utility tabular {

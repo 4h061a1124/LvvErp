@@ -33,13 +33,7 @@ export interface Lookup {
   name: string
 }
 
-export interface PagedResult<T> {
-  items: T[]
-  page: number
-  pageSize: number
-  totalCount: number
-  totalPages: number
-}
+export type { PagedResult } from '@/lib/types'
 
 export interface EmployeeListParams {
   search?: string
@@ -48,20 +42,4 @@ export interface EmployeeListParams {
   page: number
   pageSize: number
   sort?: string
-}
-
-export interface ImportError {
-  row: number
-  column: string
-  errorCode: string
-  message: string
-  value: string | null
-}
-
-export interface ImportResult {
-  succeeded: boolean
-  totalRows: number
-  created: number
-  updated: number
-  errors: ImportError[]
 }

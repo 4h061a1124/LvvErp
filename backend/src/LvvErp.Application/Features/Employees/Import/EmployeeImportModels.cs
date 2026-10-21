@@ -1,3 +1,4 @@
+using LvvErp.Application.Common.Import;
 using LvvErp.Domain.Features.Employees;
 
 namespace LvvErp.Application.Features.Employees.Import;
@@ -11,23 +12,21 @@ public sealed record EmployeeImportRow(
     string? Position,
     string? Email,
     string? Phone,
-    string? Status);
+    string? Status)
+{
+    public static EmployeeImportRow From(ExcelRow row) => new(
+        row.RowNumber,
+        row[EmployeeImportColumns.Code],
+        row[EmployeeImportColumns.FullName],
+        row[EmployeeImportColumns.Department],
+        row[EmployeeImportColumns.Position],
+        row[EmployeeImportColumns.Email],
+        row[EmployeeImportColumns.Phone],
+        row[EmployeeImportColumns.Status]);
+}
 
-/// <summary>
-/// One problem in the file. <see cref="Column"/> is a field key (Code, FullName, ...) and
-/// <see cref="ErrorCode"/> a stable code, so the frontend can show a translated message;
-/// <see cref="Message"/> is an English fallback.
-/// </summary>
-public sealed record EmployeeImportError(int Row, string Column, string ErrorCode, string Message, string? Value = null);
-
-public sealed record EmployeeImportResult(
-    bool Succeeded,
-    int TotalRows,
-    int Created,
-    int Updated,
-    IReadOnlyList<EmployeeImportError> Errors);
-
-public static class ImportColumns
+/// <summary>Column keys, also used in <see cref="ImportError.Column"/>.</summary>
+public static class EmployeeImportColumns
 {
     public const string Code = "Code";
     public const string FullName = "FullName";
@@ -36,18 +35,18 @@ public static class ImportColumns
     public const string Email = "Email";
     public const string Phone = "Phone";
     public const string Status = "Status";
-}
 
-public static class ImportErrorCodes
-{
-    public const string Required = "Required";
-    public const string TooLong = "TooLong";
-    public const string InvalidFormat = "InvalidFormat";
-    public const string UnknownDepartment = "UnknownDepartment";
-    public const string UnknownPosition = "UnknownPosition";
-    public const string InvalidStatus = "InvalidStatus";
-    public const string DuplicateInFile = "DuplicateInFile";
-    public const string AlreadyExists = "AlreadyExists";
+    // Order = column order in the file. Headers are Vietnamese (end users); "*" = required.
+    public static readonly IReadOnlyList<ExcelColumn> All =
+    [
+        new(Code, "Mã NV *", 14, IsText: true),
+        new(FullName, "Họ tên *", 30),
+        new(Department, "Bộ phận *", 24, ListName: Department),
+        new(Position, "Chức danh *", 22, ListName: Position),
+        new(Email, "Email", 28),
+        new(Phone, "Số điện thoại", 16, IsText: true),
+        new(Status, "Trạng thái", 14, ListName: Status),
+    ];
 }
 
 /// <summary>A row that passed validation, with lookups resolved.</summary>

@@ -15,7 +15,7 @@ export function Topbar({ onOpenMenu }: { onOpenMenu: () => void }) {
   const roleLabel = user?.roles.map((r) => t(`roles.${r as keyof Messages['roles']}`, r)).join(', ')
 
   return (
-    <header className="sticky top-0 z-20 flex h-12 items-center justify-between border-b border-zinc-200 bg-white px-3 lg:px-6">
+    <header className="sticky top-0 z-20 flex h-12 items-center justify-between border-b border-zinc-200 bg-white px-3 lg:px-6 print:hidden">
       <button
         type="button"
         onClick={onOpenMenu}

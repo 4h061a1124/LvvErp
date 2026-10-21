@@ -34,13 +34,3 @@ export function toEmployeeInput(values: EmployeeFormValues): EmployeeInput {
     phone: values.phone || null,
   }
 }
-
-export const PHOTO_TYPES = ['image/jpeg', 'image/png', 'image/webp']
-export const PHOTO_MAX_BYTES = 2 * 1024 * 1024
-
-/** Returns an i18n key for a problem with the chosen photo, or null when it is fine. */
-export function checkPhoto(file: File): 'employees.form.photoInvalid' | 'employees.form.photoTooLarge' | null {
-  if (!PHOTO_TYPES.includes(file.type)) return 'employees.form.photoInvalid'
-  if (file.size > PHOTO_MAX_BYTES) return 'employees.form.photoTooLarge'
-  return null
-}

@@ -1,19 +1,35 @@
+import { useMutation } from '@tanstack/react-query'
 import { Download } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Button } from '@/components/ui/Button'
 import { Dialog } from '@/components/ui/Dialog'
 import { useToast } from '@/components/ui/toast-context'
+import { api, downloadFile } from '@/lib/api'
 import { getErrorMessage, getStatus } from '@/lib/errors'
-import { downloadImportTemplate, useImportEmployees } from '../api'
-import { importColumnLabel, importErrorMessage } from '../importErrors'
-import type { ImportResult } from '../types'
+import type { ImportResult } from '@/lib/import'
+import { ImportErrorTable } from './ImportErrorTable'
+
+interface ImportDialogProps {
+  title: string
+  step1: string
+  templateUrl: string
+  templateFileName: string
+  /** POST endpoint; receives the file and <c>updateExisting</c>. */
+  importUrl: string
+  updateExistingLabel: string
+  updateExistingHint: string
+  /** Translates a column key from the server (e.g. "FullName") to a header. */
+  columnLabel: (column: string) => string
+  onImported: () => void
+  onClose: () => void
+}
 
 /** Mount only while open, so every opening starts clean. */
-export function ImportDialog({ onClose }: { onClose: () => void }) {
+export function ImportDialog(props: ImportDialogProps) {
+  const { title, step1, templateUrl, templateFileName, importUrl, columnLabel, onImported, onClose } = props
   const { t } = useTranslation()
   const toast = useToast()
-  const importEmployees = useImportEmployees()
   const fileInput = useRef<HTMLInputElement>(null)
 
   const [file, setFile] = useState<File | null>(null)
@@ -21,6 +37,14 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
   const [updateExisting, setUpdateExisting] = useState(false)
   const [result, setResult] = useState<ImportResult | null>(null)
   const [downloading, setDownloading] = useState(false)
+
+  const upload = useMutation({
+    mutationFn: async () => {
+      const form = new FormData()
+      form.append('file', file!)
+      return (await api.post<ImportResult>(importUrl, form, { params: { updateExisting } })).data
+    },
+  })
 
   function chooseFile(chosen: File | undefined) {
     if (!chosen) return
@@ -33,7 +57,7 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
   async function handleDownload() {
     setDownloading(true)
     try {
-      await downloadImportTemplate()
+      await downloadFile(templateUrl, templateFileName)
     } catch (err) {
       toast.error(getErrorMessage(err, t))
     } finally {
@@ -44,7 +68,9 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
   async function handleImport() {
     if (!file) return
     try {
-      setResult(await importEmployees.mutateAsync({ file, updateExisting }))
+      const imported = await upload.mutateAsync()
+      setResult(imported)
+      if (imported.succeeded) onImported()
     } catch (err) {
       setResult(null)
       // 400 = file-level problem (not a workbook, wrong header, no rows); row errors come back as a 200 result.
@@ -58,7 +84,7 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
     <Dialog
       open
       onClose={onClose}
-      title={t('import.title')}
+      title={title}
       width="lg"
       footer={
         done ? (
@@ -67,11 +93,11 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
           </Button>
         ) : (
           <>
-            <Button onClick={onClose} disabled={importEmployees.isPending}>
+            <Button onClick={onClose} disabled={upload.isPending}>
               {t('common.cancel')}
             </Button>
-            <Button variant="primary" onClick={handleImport} disabled={!file || importEmployees.isPending}>
-              {importEmployees.isPending ? t('import.submitting') : t('import.submit')}
+            <Button variant="primary" onClick={handleImport} disabled={!file || upload.isPending}>
+              {upload.isPending ? t('import.submitting') : t('import.submit')}
             </Button>
           </>
         )
@@ -84,7 +110,7 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
       ) : (
         <div className="space-y-4 text-sm">
           <section>
-            <div className="mb-1.5 font-medium text-zinc-800">1. {t('import.step1')}</div>
+            <div className="mb-1.5 font-medium text-zinc-800">1. {step1}</div>
             <Button size="sm" onClick={handleDownload} disabled={downloading}>
               <Download size={14} />
               {t('import.downloadTemplate')}
@@ -120,40 +146,14 @@ export function ImportDialog({ onClose }: { onClose: () => void }) {
               className="mt-0.5 size-4 accent-brand-600"
             />
             <span>
-              <span className="text-zinc-800">{t('import.updateExisting')}</span>
-              <span className="block text-xs text-zinc-500">{t('import.updateExistingHint')}</span>
+              <span className="text-zinc-800">{props.updateExistingLabel}</span>
+              <span className="block text-xs text-zinc-500">{props.updateExistingHint}</span>
             </span>
           </label>
 
           <p className="text-xs text-zinc-500">{t('import.allOrNothing')}</p>
 
-          {result && !result.succeeded && (
-            <section>
-              <p className="mb-2 border-l-[3px] border-red-600 bg-red-50 px-3 py-2 text-[13px] text-red-800">
-                {t('import.failed', { count: result.errors.length })}
-              </p>
-              <div className="max-h-64 overflow-auto rounded-[3px] border border-zinc-200">
-                <table className="w-full text-left text-[13px]">
-                  <thead className="sticky top-0 bg-zinc-50 text-zinc-600">
-                    <tr className="border-b border-zinc-200">
-                      <th className="w-14 px-2.5 py-1.5 font-medium">{t('import.row')}</th>
-                      <th className="w-32 px-2.5 py-1.5 font-medium">{t('import.column')}</th>
-                      <th className="px-2.5 py-1.5 font-medium">{t('import.error')}</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {result.errors.map((error, i) => (
-                      <tr key={i} className="border-b border-zinc-100 last:border-b-0">
-                        <td className="tabular px-2.5 py-1.5 text-zinc-600">{error.row}</td>
-                        <td className="px-2.5 py-1.5 text-zinc-700">{importColumnLabel(error.column, t)}</td>
-                        <td className="px-2.5 py-1.5 text-zinc-900">{importErrorMessage(error, t)}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </section>
-          )}
+          {result && !result.succeeded && <ImportErrorTable errors={result.errors} columnLabel={columnLabel} />}
         </div>
       )}
     </Dialog>

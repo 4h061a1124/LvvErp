@@ -1,4 +1,5 @@
 using LvvErp.Domain.Features.Employees;
+using LvvErp.Infrastructure.Persistence;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -14,7 +15,7 @@ public sealed class EmployeeConfiguration : IEntityTypeConfiguration<Employee>
         // Unique among live rows only, so a code can be reused after its employee is deleted.
         builder.HasIndex(e => e.Code).IsUnique().HasFilter("is_deleted = false");
 
-        builder.Property(e => e.FullName).HasMaxLength(Employee.FullNameMaxLength);
+        builder.Property(e => e.FullName).HasMaxLength(Employee.FullNameMaxLength).UseCollation(AppDbContext.VietnameseCollation);
         builder.Property(e => e.Email).HasMaxLength(Employee.EmailMaxLength);
         builder.Property(e => e.Phone).HasMaxLength(Employee.PhoneMaxLength);
         builder.Property(e => e.PhotoPath).HasMaxLength(300);
@@ -36,7 +37,7 @@ public sealed class DepartmentConfiguration : IEntityTypeConfiguration<Departmen
     {
         builder.ToTable("departments");
         builder.Property(d => d.Code).HasMaxLength(20);
-        builder.Property(d => d.Name).HasMaxLength(100);
+        builder.Property(d => d.Name).HasMaxLength(100).UseCollation(AppDbContext.VietnameseCollation);
         builder.Property(d => d.CreatedBy).HasMaxLength(50);
         builder.Property(d => d.UpdatedBy).HasMaxLength(50);
         builder.HasIndex(d => d.Code).IsUnique();
@@ -50,7 +51,7 @@ public sealed class PositionConfiguration : IEntityTypeConfiguration<Position>
     {
         builder.ToTable("positions");
         builder.Property(p => p.Code).HasMaxLength(20);
-        builder.Property(p => p.Name).HasMaxLength(100);
+        builder.Property(p => p.Name).HasMaxLength(100).UseCollation(AppDbContext.VietnameseCollation);
         builder.Property(p => p.CreatedBy).HasMaxLength(50);
         builder.Property(p => p.UpdatedBy).HasMaxLength(50);
         builder.HasIndex(p => p.Code).IsUnique();

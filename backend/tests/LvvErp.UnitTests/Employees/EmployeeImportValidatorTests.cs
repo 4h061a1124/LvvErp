@@ -1,3 +1,4 @@
+using LvvErp.Application.Common.Import;
 using LvvErp.Application.Common.Models;
 using LvvErp.Application.Features.Employees.Import;
 using LvvErp.Domain.Features.Employees;
@@ -77,7 +78,7 @@ public sealed class EmployeeImportValidatorTests
 
         Assert.Empty(rows);
         Assert.Equal(
-            [ImportColumns.Code, ImportColumns.FullName, ImportColumns.Department, ImportColumns.Position],
+            [EmployeeImportColumns.Code, EmployeeImportColumns.FullName, EmployeeImportColumns.Department, EmployeeImportColumns.Position],
             errors.Select(e => e.Column));
         Assert.All(errors, e => Assert.Equal(ImportErrorCodes.Required, e.ErrorCode));
         Assert.All(errors, e => Assert.Equal(2, e.Row));
@@ -90,8 +91,8 @@ public sealed class EmployeeImportValidatorTests
 
         Assert.Contains(errors, e => e is { ErrorCode: ImportErrorCodes.UnknownDepartment, Value: "Marketing" });
         Assert.Contains(errors, e => e is { ErrorCode: ImportErrorCodes.UnknownPosition, Value: "CEO" });
-        Assert.Contains(errors, e => e is { Column: ImportColumns.Email, ErrorCode: ImportErrorCodes.InvalidFormat });
-        Assert.Contains(errors, e => e is { Column: ImportColumns.Phone, ErrorCode: ImportErrorCodes.InvalidFormat });
+        Assert.Contains(errors, e => e is { Column: EmployeeImportColumns.Email, ErrorCode: ImportErrorCodes.InvalidFormat });
+        Assert.Contains(errors, e => e is { Column: EmployeeImportColumns.Phone, ErrorCode: ImportErrorCodes.InvalidFormat });
         Assert.Contains(errors, e => e is { ErrorCode: ImportErrorCodes.InvalidStatus, Value: "Đi chơi" });
     }
 

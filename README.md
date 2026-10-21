@@ -2,8 +2,14 @@
 
 Hệ thống ERP nội bộ cho nhà máy. Phiên bản hiện tại có:
 
-- Đăng nhập (JWT), phân quyền theo role: **Admin**, **HR**, **Employee**
+- Đăng nhập (JWT), phân quyền theo role: **Admin**, **HR**, **Employee**, **Thủ kho**
 - **Danh bạ nhân viên**: ảnh, mã NV, họ tên, bộ phận, chức danh, email, số điện thoại, trạng thái; tìm kiếm không dấu, lọc, phân trang; thêm/sửa/xóa; nhập từ Excel
+- **Vật tư & Kho**:
+  - Danh mục đơn vị tính, nhóm vật tư, vật tư (ảnh, quy cách, tồn tối thiểu, quản lý theo lô), kho và vị trí
+  - Phiếu nhập, phiếu xuất, phiếu chuyển kho: Nháp → Đã duyệt → Đã hủy (chỉ Admin hủy, ghi bút toán đảo)
+  - Tồn kho theo kho/vị trí/lô, thẻ kho, cảnh báo dưới tồn tối thiểu
+  - In tem QR (A4 24 tem hoặc tem cuộn 50 × 30 mm), đọc mã bằng máy quét
+  - Nhập danh mục vật tư và tồn đầu kỳ từ Excel
 - Giao diện tiếng Việt / tiếng Anh, dùng được trên điện thoại
 
 | Phần | Công nghệ |
@@ -39,7 +45,7 @@ dotnet tool restore
 dotnet run --project src/LvvErp.Api
 ```
 
-API chạy ở http://localhost:5080. Lần chạy đầu sẽ tự tạo bảng và dữ liệu mẫu (10 bộ phận, 9 chức danh, tài khoản admin).
+API chạy ở http://localhost:5080. Lần chạy đầu sẽ tự tạo bảng và dữ liệu mẫu (10 bộ phận, 9 chức danh, 10 đơn vị tính, 5 nhóm vật tư, tài khoản admin).
 Tài liệu API (Scalar): http://localhost:5080/scalar. Kiểm tra tình trạng hệ thống: http://localhost:5080/health.
 
 **3. Frontend**
@@ -58,9 +64,47 @@ Mở http://localhost:5173 và đăng nhập:
 
 > Mật khẩu này chỉ dùng cho môi trường dev (nằm trong `appsettings.Development.json`). Hãy đổi ngay sau khi đăng nhập nếu dùng chung máy chủ.
 
-Tài khoản HR / Employee được tạo bằng API `POST /api/users` (cần quyền Admin, thử trực tiếp trên trang Scalar).
+Tài khoản HR / Employee / Thủ kho (`Storekeeper`) được tạo bằng API `POST /api/users` (cần quyền Admin, thử trực tiếp trên trang Scalar).
 
-## Nhập nhân viên từ Excel
+### Quyền theo role
+
+| | Admin | HR | Employee | Thủ kho |
+|---|:-:|:-:|:-:|:-:|
+| Xem danh bạ nhân viên | ✓ | ✓ | ✓ | ✓ |
+| Thêm/sửa/xóa, nhập Excel nhân viên | ✓ | ✓ | | |
+| Xem danh mục kho, phiếu, tồn kho, thẻ kho | ✓ | ✓ | ✓ | ✓ |
+| Sửa danh mục kho, lập và duyệt phiếu, nhập Excel kho | ✓ | | | ✓ |
+| Hủy phiếu đã duyệt | ✓ | | | |
+| Quản lý tài khoản | ✓ | | | |
+
+## Sử dụng module Kho
+
+**Bắt đầu:** tạo kho (và vị trí nếu kho chia kệ/ô) ở **Danh mục kho → Kho & vị trí**, nhập danh mục vật tư (thêm tay hoặc **Vật tư → Nhập Excel**), rồi nhập tồn đầu kỳ (**Phiếu nhập → Nhập tồn đầu kỳ**). Import tồn đầu kỳ tạo **phiếu nhập nháp** (mỗi kho một phiếu); kiểm tra rồi bấm **Duyệt** để ghi tồn.
+
+**Lập phiếu:**
+- Chọn kho, rồi thêm dòng bằng cách gõ hoặc **quét mã vật tư** vào ô cuối danh sách (máy quét mã vạch/QR hoạt động như bàn phím: mã + Enter).
+- Phiếu nhập: vật tư quản lý theo lô phải ghi số lô; chọn lô đã có thì tự điền ngày sản xuất, hạn dùng.
+- Phiếu xuất / chuyển: chọn chỗ lấy hàng trong danh sách vị trí – lô còn tồn (hạn dùng gần nhất xếp đầu).
+- **Lưu nháp** không làm thay đổi tồn. **Duyệt** mới ghi tồn; nếu không đủ tồn, hệ thống báo từng dòng thiếu bao nhiêu và không ghi dòng nào.
+- Phiếu đã duyệt không sửa được. Nhầm lẫn thì Admin **Hủy phiếu** (bắt buộc ghi lý do); hệ thống ghi bút toán đảo, lịch sử vẫn giữ trên thẻ kho. Chỉ hủy được khi tồn hiện tại còn đủ.
+
+**In tem QR:** ở danh sách vật tư, tick các dòng rồi bấm **In tem**; hoặc mở phiếu nhập đã duyệt và bấm **In tem** (tem có số lô, hạn dùng). Khi in: chọn đúng khổ giấy (A4 hoặc 50 × 30 mm), tỷ lệ 100%, tắt "Đầu trang và chân trang".
+
+**Báo cáo:** **Tồn kho** (lọc theo kho, nhóm, chỉ hiện vật tư dưới tồn tối thiểu; bấm mũi tên để xem chi tiết theo vị trí/lô) và **Thẻ kho** (tồn đầu kỳ, từng phát sinh, tồn cuối kỳ). Trang **Tổng quan** hiện danh sách vật tư dưới tồn tối thiểu và số phiếu nháp chờ duyệt.
+
+Tồn tối thiểu được so với **tổng tồn của mọi kho**.
+
+## Nhập Excel
+
+Mọi file import dùng chung quy tắc: tải **file mẫu** từ màn hình nhập, điền từ dòng 2, không đổi thứ tự/tên cột; danh mục (bộ phận, ĐVT, kho…) chọn từ danh sách hoặc gõ mã/tên, không phân biệt hoa thường hay có dấu; số thập phân ghi `12,5` hoặc `12.5`; ngày ghi `dd/MM/yyyy`. Có bất kỳ dòng nào lỗi thì toàn bộ file không được lưu, màn hình liệt kê lỗi theo dòng và cột.
+
+| File | Màn hình | Cột bắt buộc |
+|---|---|---|
+| Nhân viên | Danh bạ nhân viên → Nhập Excel | Mã NV, Họ tên, Bộ phận, Chức danh |
+| Danh mục vật tư | Vật tư → Nhập Excel | Mã vật tư, Tên, ĐVT, Nhóm (Quản lý lô: Có/Không) |
+| Tồn đầu kỳ | Phiếu nhập → Nhập tồn đầu kỳ | Mã vật tư, Kho, Số lượng (+ Số lô với vật tư quản lý lô) |
+
+### Nhân viên
 
 1. Vào **Danh bạ nhân viên → Nhập Excel → Tải file mẫu**.
 2. Điền danh sách vào sheet **Nhân viên**, bắt đầu từ dòng 2, không đổi thứ tự hay tên cột.
@@ -143,4 +187,7 @@ CLAUDE.md    Kiến trúc và quy ước code (đọc trước khi phát triển
 | API báo `Jwt:SigningKey must be at least 32 bytes` | Đặt khóa ký JWT (biến `Jwt__SigningKey`) |
 | Integration test lỗi khi khởi tạo | Kiểm tra Docker Desktop đang chạy |
 | Frontend báo "Không kết nối được máy chủ" | Kiểm tra API đang chạy ở cổng 5080 |
+| Trang kho báo lỗi sau khi cập nhật code | Khởi động lại API để áp migration mới |
+| Tem in bị lệch hoặc thu nhỏ | Trong hộp thoại in: đúng khổ giấy, tỷ lệ 100% (không "Fit to page"), lề "None", tắt đầu/chân trang |
+| Ô ngày hiện `mm/dd/yyyy` | Định dạng theo ngôn ngữ trình duyệt/Windows; đặt ngôn ngữ Tiếng Việt để hiện `dd/mm/yyyy` |
 | Xóa sạch dữ liệu dev | `docker compose down -v` rồi chạy lại API |

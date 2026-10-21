@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using ClosedXML.Excel;
+using LvvErp.Application.Common.Import;
 using LvvErp.Application.Common.Models;
 using LvvErp.Application.Features.Employees;
 using LvvErp.Application.Features.Employees.Import;
@@ -42,11 +43,11 @@ public sealed class EmployeeImportTests(ApiFactory factory) : ApiTestBase(factor
             new MultipartFormDataContent { { content, "file", "nhan-vien.xlsx" } });
     }
 
-    private static async Task<EmployeeImportResult> ImportAsync(HttpClient client, byte[] file, bool updateExisting = false)
+    private static async Task<ImportResult> ImportAsync(HttpClient client, byte[] file, bool updateExisting = false)
     {
         var response = await UploadAsync(client, file, updateExisting);
         response.EnsureSuccessStatusCode();
-        return (await response.Content.ReadFromJsonAsync<EmployeeImportResult>(Json))!;
+        return (await response.Content.ReadFromJsonAsync<ImportResult>(Json))!;
     }
 
     private static async Task<EmployeeDto?> FindByCodeAsync(HttpClient client, string code) =>
@@ -100,8 +101,8 @@ public sealed class EmployeeImportTests(ApiFactory factory) : ApiTestBase(factor
 
         Assert.False(result.Succeeded);
         Assert.Equal((0, 0), (result.Created, result.Updated));
-        Assert.Contains(result.Errors, e => e is { Row: 3, Column: ImportColumns.Department, ErrorCode: ImportErrorCodes.UnknownDepartment });
-        Assert.Contains(result.Errors, e => e is { Row: 3, Column: ImportColumns.Email });
+        Assert.Contains(result.Errors, e => e is { Row: 3, Column: EmployeeImportColumns.Department, ErrorCode: ImportErrorCodes.UnknownDepartment });
+        Assert.Contains(result.Errors, e => e is { Row: 3, Column: EmployeeImportColumns.Email });
         Assert.DoesNotContain(result.Errors, e => e.Row == 2);
         Assert.Null(await FindByCodeAsync(hr, good));
     }

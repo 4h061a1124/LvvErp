@@ -1,6 +1,7 @@
 using LvvErp.Application.Common.Interfaces;
 using LvvErp.Domain.Features.Employees;
 using LvvErp.Domain.Features.Identity;
+using LvvErp.Domain.Features.Inventory;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -52,10 +53,34 @@ public sealed class DbInitializer(
         ("CN", "Công nhân"),
     ];
 
+    private static readonly (string Code, string Name)[] DefaultUnits =
+    [
+        ("CAI", "Cái"),
+        ("BO", "Bộ"),
+        ("KG", "Kg"),
+        ("G", "Gram"),
+        ("M", "Mét"),
+        ("L", "Lít"),
+        ("CUON", "Cuộn"),
+        ("THUNG", "Thùng"),
+        ("TAM", "Tấm"),
+        ("HOP", "Hộp"),
+    ];
+
+    private static readonly (string Code, string Name)[] DefaultMaterialGroups =
+    [
+        ("NVL", "Nguyên vật liệu"),
+        ("PT", "Phụ tùng thay thế"),
+        ("VTTH", "Vật tư tiêu hao"),
+        ("CCDC", "Công cụ dụng cụ"),
+        ("BB", "Bao bì"),
+    ];
+
     public async Task InitializeAsync(CancellationToken ct = default)
     {
         await db.Database.MigrateAsync(ct);
         await SeedLookupsAsync(ct);
+        await SeedInventoryCatalogAsync(ct);
         await SeedAdminAsync(ct);
     }
 
@@ -73,6 +98,23 @@ public sealed class DbInitializer(
             db.Positions.AddRange(DefaultPositions.Select((p, i) =>
                 new Position { Code = p.Code, Name = p.Name, SortOrder = i + 1 }));
             logger.LogInformation("Seeding {Count} default positions.", DefaultPositions.Length);
+        }
+
+        await db.SaveChangesAsync(ct);
+    }
+
+    private async Task SeedInventoryCatalogAsync(CancellationToken ct)
+    {
+        if (!await db.Units.AnyAsync(ct))
+        {
+            db.Units.AddRange(DefaultUnits.Select(u => new Unit { Code = u.Code, Name = u.Name }));
+            logger.LogInformation("Seeding {Count} default units.", DefaultUnits.Length);
+        }
+
+        if (!await db.MaterialGroups.AnyAsync(ct))
+        {
+            db.MaterialGroups.AddRange(DefaultMaterialGroups.Select(g => new MaterialGroup { Code = g.Code, Name = g.Name }));
+            logger.LogInformation("Seeding {Count} default material groups.", DefaultMaterialGroups.Length);
         }
 
         await db.SaveChangesAsync(ct);

@@ -1,3 +1,4 @@
+using LvvErp.Application.Common.Import;
 using LvvErp.Application.Common.Models;
 using LvvErp.Application.Common.Security;
 using LvvErp.Application.Features.Employees;
@@ -68,7 +69,7 @@ public sealed class EmployeesController(IEmployeeService employees, IEmployeeImp
     [HttpPost("import")]
     [Authorize(Policy = Permissions.EmployeesManage)]
     [RequestSizeLimit(10 * 1024 * 1024)]
-    public async Task<EmployeeImportResult> Import(IFormFile file, [FromQuery] bool updateExisting, CancellationToken ct)
+    public async Task<ImportResult> Import(IFormFile file, [FromQuery] bool updateExisting, CancellationToken ct)
     {
         await using var stream = file.OpenReadStream();
         return await import.ImportAsync(stream, updateExisting, ct);

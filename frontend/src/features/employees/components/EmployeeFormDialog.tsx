@@ -1,15 +1,16 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useQueryClient } from '@tanstack/react-query'
-import { useEffect, useMemo, useRef, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
+import { PhotoField } from '@/components/PhotoField'
 import { Button } from '@/components/ui/Button'
 import { Dialog } from '@/components/ui/Dialog'
 import { Field, Input, Select } from '@/components/ui/Field'
 import { useToast } from '@/components/ui/toast-context'
 import { getErrorMessage, getFieldErrors, getStatus } from '@/lib/errors'
+import { usePhotoDraft } from '@/lib/photo'
 import { deletePhoto, employeeKeys, uploadPhoto, useDepartments, usePositions, useSaveEmployee } from '../api'
-import { checkPhoto, employeeSchema, PHOTO_TYPES, toEmployeeInput, type EmployeeFormValues } from '../schema'
+import { employeeSchema, toEmployeeInput, type EmployeeFormValues } from '../schema'
 import { EMPLOYEE_STATUSES, type Employee, type Lookup } from '../types'
 import { EmployeeAvatar } from './EmployeeAvatar'
 
@@ -77,13 +78,7 @@ function EmployeeForm({
   const queryClient = useQueryClient()
   const save = useSaveEmployee()
 
-  const fileInput = useRef<HTMLInputElement>(null)
-  const [photoFile, setPhotoFile] = useState<File | null>(null)
-  const [removePhoto, setRemovePhoto] = useState(false)
-  const [photoError, setPhotoError] = useState<string | null>(null)
-
-  const photoPreview = useMemo(() => (photoFile ? URL.createObjectURL(photoFile) : null), [photoFile])
-  useEffect(() => () => void (photoPreview && URL.revokeObjectURL(photoPreview)), [photoPreview])
+  const photo = usePhotoDraft()
 
   const {
     register,
@@ -92,26 +87,17 @@ function EmployeeForm({
     formState: { errors, isSubmitting },
   } = useForm<EmployeeFormValues>({ resolver: zodResolver(employeeSchema), defaultValues: toFormValues(employee) })
 
-  function choosePhoto(file: File | undefined) {
-    if (!file) return
-    const problem = checkPhoto(file)
-    setPhotoError(problem ? t(problem) : null)
-    if (problem) return
-    setPhotoFile(file)
-    setRemovePhoto(false)
-  }
-
   const onSubmit = handleSubmit(async (values) => {
     try {
       const saved = await save.mutateAsync({ id: employee?.id, input: toEmployeeInput(values) })
 
       try {
-        if (photoFile) await uploadPhoto(saved.id, photoFile)
-        else if (removePhoto && employee?.photoUrl) await deletePhoto(saved.id)
+        if (photo.draft.file) await uploadPhoto(saved.id, photo.draft.file)
+        else if (photo.draft.remove && employee?.photoUrl) await deletePhoto(saved.id)
       } catch {
-        toast.error(t('employees.form.photoFailed'))
+        toast.error(t('photo.failed'))
       }
-      if (photoFile || removePhoto) await queryClient.invalidateQueries({ queryKey: employeeKeys.all })
+      if (photo.changed) await queryClient.invalidateQueries({ queryKey: employeeKeys.all })
 
       toast.success(t(employee ? 'employees.form.updated' : 'employees.form.created', { code: saved.code }))
       onClose()
@@ -131,8 +117,6 @@ function EmployeeForm({
 
   // Client messages are i18n keys; server messages are shown as-is (t returns unknown keys unchanged).
   const message = (key?: string) => (key ? t(key as never) : undefined)
-
-  const currentPhoto = photoPreview ?? (removePhoto ? null : (employee?.photoUrl ?? null))
 
   return (
     <Dialog
@@ -157,40 +141,13 @@ function EmployeeForm({
       }
     >
       <form id="employee-form" onSubmit={onSubmit} noValidate>
-        <div className="mb-4 flex items-center gap-3 border-b border-zinc-100 pb-4">
-          <EmployeeAvatar name={employee?.fullName ?? ''} photoUrl={currentPhoto} size={72} />
-          <div>
-            <div className="flex flex-wrap gap-2">
-              <Button size="sm" onClick={() => fileInput.current?.click()}>
-                {currentPhoto ? t('employees.form.changePhoto') : t('employees.form.choosePhoto')}
-              </Button>
-              {currentPhoto && (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  onClick={() => {
-                    setPhotoFile(null)
-                    setRemovePhoto(true)
-                  }}
-                >
-                  {t('employees.form.removePhoto')}
-                </Button>
-              )}
-            </div>
-            <p className={photoError ? 'mt-1.5 text-xs text-red-600' : 'mt-1.5 text-xs text-zinc-500'}>
-              {photoError ?? t('employees.form.photoHint')}
-            </p>
-            <input
-              ref={fileInput}
-              type="file"
-              accept={PHOTO_TYPES.join(',')}
-              className="hidden"
-              onChange={(e) => {
-                choosePhoto(e.target.files?.[0])
-                e.target.value = ''
-              }}
-            />
-          </div>
+        <div className="mb-4 border-b border-zinc-100 pb-4">
+          <PhotoField
+            currentUrl={employee?.photoUrl ?? null}
+            draft={photo.draft}
+            onChange={photo.setDraft}
+            placeholder={(size) => <EmployeeAvatar name={employee?.fullName ?? ''} photoUrl={null} size={size} />}
+          />
         </div>
 
         <div className="grid gap-x-4 gap-y-3 sm:grid-cols-2">
@@ -207,7 +164,7 @@ function EmployeeForm({
             error={message(errors.departmentId?.message)}
           >
             <Select id="departmentId" invalid={!!errors.departmentId} {...register('departmentId')}>
-              <option value="">{t('employees.form.choose')}</option>
+              <option value="">{t('common.choose')}</option>
               {departments.map((d) => (
                 <option key={d.id} value={d.id}>
                   {d.name}
@@ -222,7 +179,7 @@ function EmployeeForm({
             error={message(errors.positionId?.message)}
           >
             <Select id="positionId" invalid={!!errors.positionId} {...register('positionId')}>
-              <option value="">{t('employees.form.choose')}</option>
+              <option value="">{t('common.choose')}</option>
               {positions.map((p) => (
                 <option key={p.id} value={p.id}>
                   {p.name}
