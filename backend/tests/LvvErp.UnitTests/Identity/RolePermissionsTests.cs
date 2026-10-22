@@ -6,8 +6,8 @@ namespace LvvErp.UnitTests.Identity;
 public sealed class RolePermissionsTests
 {
     [Fact]
-    public void Admin_has_every_permission() =>
-        Assert.Equal(Permissions.All.Order(), RolePermissions.ForRoles([Roles.Admin]));
+    public void Admin_has_every_permission_except_money_approvals() =>
+        Assert.Equal(Permissions.All.Except(Permissions.MoneyApprovals).Order(), RolePermissions.ForRoles([Roles.Admin]));
 
     [Fact]
     public void HR_can_view_and_manage_employees_but_not_users()
@@ -20,8 +20,10 @@ public sealed class RolePermissionsTests
     }
 
     [Fact]
-    public void Employee_can_only_view() =>
-        Assert.Equal([Permissions.EmployeesView, Permissions.InventoryView], RolePermissions.ForRoles([Roles.Employee]));
+    public void Employee_can_view_and_raise_purchase_requests() =>
+        Assert.Equal(
+            [Permissions.EmployeesView, Permissions.InventoryView, Permissions.PurchasingCreateRequests],
+            RolePermissions.ForRoles([Roles.Employee]));
 
     [Fact]
     public void Every_signed_in_role_can_view_employees_and_inventory()
@@ -58,6 +60,43 @@ public sealed class RolePermissionsTests
             Assert.Equal([Roles.Admin, Roles.Storekeeper], RolePermissions.RolesWith(permission).Order());
         }
     }
+
+    [Fact]
+    public void Money_approvals_go_only_to_department_heads_and_directors()
+    {
+        foreach (var permission in Permissions.MoneyApprovals)
+            Assert.Equal([Roles.DepartmentHead, Roles.Director], RolePermissions.RolesWith(permission).Order());
+    }
+
+    [Fact]
+    public void Every_signed_in_role_can_raise_purchase_requests() =>
+        Assert.Equal(Roles.All.Order(), RolePermissions.RolesWith(Permissions.PurchasingCreateRequests).Order());
+
+    [Fact]
+    public void Purchaser_manages_suppliers_and_orders_but_approves_nothing()
+    {
+        var permissions = RolePermissions.ForRoles([Roles.Purchaser]);
+
+        Assert.Contains(Permissions.PurchasingManageSuppliers, permissions);
+        Assert.Contains(Permissions.PurchasingManageOrders, permissions);
+        Assert.DoesNotContain(Permissions.PurchasingApproveRequests, permissions);
+        Assert.DoesNotContain(Permissions.PurchasingApproveOrders, permissions);
+        Assert.DoesNotContain(Permissions.PurchasingManageSettings, permissions);
+    }
+
+    [Fact]
+    public void Storekeeper_sees_purchasing_but_cannot_manage_suppliers()
+    {
+        var permissions = RolePermissions.ForRoles([Roles.Storekeeper]);
+
+        Assert.Contains(Permissions.PurchasingView, permissions);
+        Assert.DoesNotContain(Permissions.PurchasingManageSuppliers, permissions);
+        Assert.DoesNotContain(Permissions.PurchasingManageOrders, permissions);
+    }
+
+    [Fact]
+    public void Only_admin_changes_purchasing_settings() =>
+        Assert.Equal([Roles.Admin], RolePermissions.RolesWith(Permissions.PurchasingManageSettings));
 
     [Fact]
     public void Multiple_roles_merge_without_duplicates() =>

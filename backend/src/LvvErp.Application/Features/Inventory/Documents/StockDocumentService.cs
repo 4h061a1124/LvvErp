@@ -6,6 +6,7 @@ using LvvErp.Application.Common.Models;
 using LvvErp.Application.Common.Persistence;
 using LvvErp.Application.Common.Text;
 using LvvErp.Application.Common.Time;
+using LvvErp.Application.Features.Purchasing.Receiving;
 using LvvErp.Domain.Features.Inventory;
 using Microsoft.EntityFrameworkCore;
 
@@ -37,6 +38,7 @@ public sealed class StockDocumentService(
     ICurrentUser currentUser,
     TimeProvider timeProvider,
     BusinessClock clock,
+    IPurchaseReceiving purchaseReceiving,
     IValidator<StockDocumentDraft> draftValidator,
     IValidator<CancelStockDocumentRequest> cancelValidator) : IStockDocumentService
 {
@@ -78,7 +80,8 @@ public sealed class StockDocumentService(
                 d.Id, d.Number, d.Type, d.Status, d.DocumentDate, d.Warehouse.Name,
                 d.ToWarehouse != null ? d.ToWarehouse.Name : null, d.Reason, d.Partner,
                 d.Department != null ? d.Department.Name : null, d.Employee != null ? d.Employee.FullName : null,
-                d.Lines.Count, d.CreatedBy, d.CreatedAt, d.ApprovedAt))
+                d.Lines.Count, d.CreatedBy, d.CreatedAt, d.ApprovedAt,
+                d.PurchaseOrderId, d.PurchaseOrder != null ? d.PurchaseOrder.Number : null))
             .ToListAsync(ct);
 
         return new PagedResult<StockDocumentSummaryDto>(items, page, pageSize, total);
@@ -93,6 +96,7 @@ public sealed class StockDocumentService(
                 d.DepartmentId, d.Department != null ? d.Department.Name : null,
                 d.EmployeeId, d.Employee != null ? d.Employee.FullName : null,
                 d.Note, d.CreatedAt, d.CreatedBy, d.ApprovedAt, d.ApprovedBy, d.CancelledAt, d.CancelledBy, d.CancelReason,
+                d.PurchaseOrderId, d.PurchaseOrder != null ? d.PurchaseOrder.Number : null,
                 d.Lines.OrderBy(l => l.LineNo).Select(l => new StockDocumentLineDto(
                     l.Id, l.LineNo, l.MaterialId, l.Material.Code, l.Material.Name, l.Material.Unit.Name, l.Material.TrackLots,
                     l.LocationId, l.Location != null ? l.Location.Code : null,
@@ -101,13 +105,14 @@ public sealed class StockDocumentService(
                     l.Lot != null ? l.Lot.LotNumber : l.LotNumber,
                     l.Lot != null ? l.Lot.ManufactureDate : l.ManufactureDate,
                     l.Lot != null ? l.Lot.ExpiryDate : l.ExpiryDate,
-                    l.Quantity, l.Note)).ToList()))
+                    l.Quantity, l.Note, l.PurchaseOrderLineId)).ToList()))
             .SingleOrDefaultAsync(ct)
         ?? throw NotFoundException.For<StockDocument>(id);
 
     public async Task<StockDocumentDto> CreateAsync(StockDocumentDraft draft, CancellationToken ct = default)
     {
         await draftValidator.ValidateAndThrowAsync(draft, ct);
+        draft = await WithSupplierAsPartnerAsync(draft, ct);
         await ValidateReferencesAsync(draft, ct);
 
         await using var tx = await DbTransactionScope.BeginAsync(db, ct);
@@ -129,6 +134,7 @@ public sealed class StockDocumentService(
     public async Task<StockDocumentDto> UpdateAsync(Guid id, StockDocumentDraft draft, CancellationToken ct = default)
     {
         await draftValidator.ValidateAndThrowAsync(draft, ct);
+        draft = await WithSupplierAsPartnerAsync(draft, ct);
         await ValidateReferencesAsync(draft, ct);
 
         await using var tx = await DbTransactionScope.BeginAsync(db, ct);
@@ -164,6 +170,7 @@ public sealed class StockDocumentService(
 
         // Catalog data may have changed since the draft was saved (deactivated material, ...).
         await ValidateReferencesAsync(ToDraft(document), ct);
+        await purchaseReceiving.ApplyApprovalAsync(document, ct); // before posting: fails fast on over-receipt
 
         if (document.Type == StockDocumentType.Receipt)
         {
@@ -204,6 +211,8 @@ public sealed class StockDocumentService(
         document.CancelledBy = currentUser.UserName;
         document.CancelReason = request.Reason.Trim();
         await db.SaveChangesAsync(ct);
+        await purchaseReceiving.ApplyCancellationAsync(document, ct); // counts approved receipts, so after saving
+        await db.SaveChangesAsync(ct);
         await tx.CompleteAsync(ct);
 
         return await GetAsync(id, ct: ct);
@@ -233,6 +242,7 @@ public sealed class StockDocumentService(
         document.DepartmentId = draft.DepartmentId;
         document.EmployeeId = draft.EmployeeId;
         document.Note = TextNormalizer.NullIfBlank(draft.Note);
+        document.PurchaseOrderId = draft.PurchaseOrderId;
         document.Lines = draft.Lines.Select((l, i) => new StockDocumentLine
         {
             LineNo = i + 1,
@@ -245,6 +255,7 @@ public sealed class StockDocumentService(
             ExpiryDate = l.ExpiryDate,
             Quantity = l.Quantity,
             Note = TextNormalizer.NullIfBlank(l.Note),
+            PurchaseOrderLineId = l.PurchaseOrderLineId,
         }).ToList();
     }
 
@@ -252,13 +263,21 @@ public sealed class StockDocumentService(
         d.Type, d.DocumentDate, d.WarehouseId, d.ToWarehouseId, d.Reason, d.Partner, d.DepartmentId, d.EmployeeId, d.Note,
         d.Lines.OrderBy(l => l.LineNo).Select(l => new StockLineDraft(
             l.MaterialId, l.LocationId, l.ToLocationId, l.LotId, l.LotNumber, l.ManufactureDate, l.ExpiryDate,
-            l.Quantity, l.Note)).ToList());
+            l.Quantity, l.Note, l.PurchaseOrderLineId)).ToList(),
+        d.PurchaseOrderId);
+
+    /// <summary>A receipt from a purchase order names the supplier as partner unless one was typed.</summary>
+    private async Task<StockDocumentDraft> WithSupplierAsPartnerAsync(StockDocumentDraft draft, CancellationToken ct) =>
+        draft.PurchaseOrderId is { } orderId && string.IsNullOrWhiteSpace(draft.Partner)
+            ? draft with { Partner = await purchaseReceiving.SupplierNameAsync(orderId, ct) }
+            : draft;
 
     /// <summary>Rules that need the database. Errors use the request's property paths ("Lines[2].LotId").</summary>
     private async Task ValidateReferencesAsync(StockDocumentDraft draft, CancellationToken ct)
     {
         var failures = new List<ValidationFailure>();
         void Fail(string property, string message) => failures.Add(new ValidationFailure(property, message));
+        failures.AddRange(await purchaseReceiving.ValidateAsync(draft, ct));
 
         var warehouseIds = new[] { draft.WarehouseId, draft.ToWarehouseId }.OfType<Guid>().Distinct().ToList();
         var activeWarehouses = await db.Warehouses

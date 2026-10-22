@@ -1,4 +1,5 @@
 import { keepPreviousData, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { purchasingKeys } from '@/features/purchasing/api'
 import { api } from '@/lib/api'
 import type { PagedResult } from '@/lib/types'
 import type {
@@ -46,6 +47,8 @@ function useInvalidateStock() {
     Promise.all([
       queryClient.invalidateQueries({ queryKey: documentKeys.all }),
       queryClient.invalidateQueries({ queryKey: stockKeys.all }),
+      // Receipts from a purchase order move the order's received quantities and status.
+      queryClient.invalidateQueries({ queryKey: purchasingKeys.documents }),
     ])
 }
 

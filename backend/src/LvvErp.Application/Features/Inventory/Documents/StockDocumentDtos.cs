@@ -26,6 +26,8 @@ public sealed record StockDocumentDto(
     DateTimeOffset? CancelledAt,
     string? CancelledBy,
     string? CancelReason,
+    Guid? PurchaseOrderId,
+    string? PurchaseOrderNumber,
     IReadOnlyList<StockDocumentLineDto> Lines);
 
 public sealed record StockDocumentLineDto(
@@ -45,7 +47,8 @@ public sealed record StockDocumentLineDto(
     DateOnly? ManufactureDate,
     DateOnly? ExpiryDate,
     decimal Quantity,
-    string? Note);
+    string? Note,
+    Guid? PurchaseOrderLineId);
 
 public sealed record StockDocumentSummaryDto(
     Guid Id,
@@ -62,7 +65,9 @@ public sealed record StockDocumentSummaryDto(
     int LineCount,
     string? CreatedBy,
     DateTimeOffset CreatedAt,
-    DateTimeOffset? ApprovedAt);
+    DateTimeOffset? ApprovedAt,
+    Guid? PurchaseOrderId,
+    string? PurchaseOrderNumber);
 
 /// <summary>Query string of document lists.</summary>
 public sealed class StockDocumentListQuery

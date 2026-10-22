@@ -11,14 +11,14 @@ namespace LvvErp.IntegrationTests.Identity;
 public sealed class AuthTests(ApiFactory factory) : ApiTestBase(factory)
 {
     [Fact]
-    public async Task Seeded_admin_can_log_in_and_gets_all_permissions()
+    public async Task Seeded_admin_can_log_in_and_gets_every_permission_except_money_approvals()
     {
         var login = await LoginAsync(ApiFactory.AdminUserName, ApiFactory.AdminPassword);
 
         Assert.False(string.IsNullOrWhiteSpace(login.AccessToken));
         Assert.True(login.ExpiresAt > DateTimeOffset.UtcNow);
         Assert.Equal([Roles.Admin], login.User.Roles);
-        Assert.Equal(Permissions.All.Order(), login.User.Permissions);
+        Assert.Equal(Permissions.All.Except(Permissions.MoneyApprovals).Order(), login.User.Permissions);
     }
 
     [Fact]
@@ -67,7 +67,8 @@ public sealed class AuthTests(ApiFactory factory) : ApiTestBase(factory)
         var me = await client.GetFromJsonAsync<CurrentUserDto>("/api/auth/me");
 
         Assert.Equal(user.Id, me!.Id);
-        Assert.Equal([Permissions.EmployeesView, Permissions.InventoryView], me.Permissions);
+        Assert.Equal([Permissions.EmployeesView, Permissions.InventoryView, Permissions.PurchasingCreateRequests], me.Permissions);
+        Assert.Null(me.DepartmentId);
     }
 
     [Fact]

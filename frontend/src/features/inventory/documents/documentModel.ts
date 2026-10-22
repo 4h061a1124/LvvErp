@@ -1,5 +1,6 @@
 import { z } from 'zod'
-import { hasAtMostThreeDecimals, parseQuantity, todayIso } from '@/lib/format'
+import type { PurchaseOrder } from '@/features/purchasing/types'
+import { formatQuantityInput, hasAtMostThreeDecimals, parseQuantity, todayIso } from '@/lib/format'
 import type { DocumentInput, DocumentReason, DocumentType, StockDocument } from './types'
 
 export interface MaterialRef {
@@ -31,6 +32,8 @@ const lineSchema = z.object({
   manufactureDate: z.string(),
   expiryDate: z.string(),
   quantity: z.string(),
+  /** Receipts from a purchase order: the order line received. */
+  purchaseOrderLineId: z.string(),
 })
 export type LineValues = z.infer<typeof lineSchema>
 
@@ -43,6 +46,7 @@ const formSchema = z.object({
   departmentId: z.string(),
   employee: z.custom<{ id: string; code: string; fullName: string; departmentId: string } | null>(),
   note: z.string().trim().max(500, 'validation.tooLong'),
+  purchaseOrder: z.custom<{ id: string; number: string } | null>(),
   lines: z.array(lineSchema),
 })
 export type DocumentFormValues = z.infer<typeof formSchema>
@@ -89,6 +93,7 @@ export function emptyLine(material: MaterialRef | null = null): LineValues {
     manufactureDate: '',
     expiryDate: '',
     quantity: '',
+    purchaseOrderLineId: '',
   }
 }
 
@@ -102,6 +107,7 @@ export function newDocumentValues(type: DocumentType): DocumentFormValues {
     departmentId: '',
     employee: null,
     note: '',
+    purchaseOrder: null,
     lines: [],
   }
 }
@@ -116,6 +122,7 @@ export function documentToValues(d: StockDocument): DocumentFormValues {
     departmentId: d.departmentId ?? '',
     employee: d.employeeId ? { id: d.employeeId, code: '', fullName: d.employeeName ?? '', departmentId: d.departmentId ?? '' } : null,
     note: d.note ?? '',
+    purchaseOrder: d.purchaseOrderId ? { id: d.purchaseOrderId, number: d.purchaseOrderNumber ?? '' } : null,
     lines: d.lines.map((l) => ({
       key: l.id,
       material: { id: l.materialId, code: l.materialCode, name: l.materialName, unitName: l.unitName, trackLots: l.trackLots },
@@ -126,6 +133,7 @@ export function documentToValues(d: StockDocument): DocumentFormValues {
       manufactureDate: d.type === 'Receipt' ? (l.manufactureDate ?? '') : '',
       expiryDate: d.type === 'Receipt' ? (l.expiryDate ?? '') : '',
       quantity: String(l.quantity),
+      purchaseOrderLineId: l.purchaseOrderLineId ?? '',
     })),
   }
 }
@@ -138,6 +146,7 @@ export function valuesToInput(type: DocumentType, v: DocumentFormValues): Docume
     ...(type === 'Receipt' ? { partner: v.partner || null } : {}),
     ...(type === 'Issue' ? { departmentId: v.departmentId || null, employeeId: v.employee?.id ?? null } : {}),
     note: v.note || null,
+    ...(type === 'Receipt' && v.purchaseOrder ? { purchaseOrderId: v.purchaseOrder.id } : {}),
     lines: v.lines.map((l) => {
       const quantity = parseQuantity(l.quantity) ?? 0
       if (type === 'Receipt') {
@@ -149,6 +158,7 @@ export function valuesToInput(type: DocumentType, v: DocumentFormValues): Docume
           manufactureDate: lot ? l.manufactureDate || null : null,
           expiryDate: lot ? l.expiryDate || null : null,
           quantity,
+          ...(v.purchaseOrder ? { purchaseOrderLineId: l.purchaseOrderLineId } : {}),
         }
       }
       const { locationId, lotId } = parseSourceKey(l.source)
@@ -161,4 +171,30 @@ export function valuesToInput(type: DocumentType, v: DocumentFormValues): Docume
       }
     }),
   }
+}
+
+/**
+ * A new purchase receipt for what is still due on an approved order: one line per order line,
+ * quantity = ordered − received (lines already received in full are left out).
+ */
+export function receiptFromOrder(order: PurchaseOrder, language: string): DocumentFormValues {
+  return {
+    ...newDocumentValues('Receipt'),
+    warehouseId: order.warehouseId,
+    reason: 'Purchase',
+    partner: order.supplier.name,
+    purchaseOrder: { id: order.id, number: order.number },
+    lines: order.lines
+      .filter((l) => l.receivedQuantity < l.quantity)
+      .map((l) => ({
+        ...emptyLine({ id: l.materialId, code: l.materialCode, name: l.materialName, unitName: l.unitName, trackLots: l.trackLots }),
+        quantity: formatQuantityInput(Number((l.quantity - l.receivedQuantity).toFixed(3)), language),
+        purchaseOrderLineId: l.id,
+      })),
+  }
+}
+
+/** Another line for the same order line, e.g. when the goods arrive in two lots. */
+export function splitLine(line: LineValues): LineValues {
+  return { ...emptyLine(line.material), locationId: line.locationId, purchaseOrderLineId: line.purchaseOrderLineId }
 }

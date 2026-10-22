@@ -50,6 +50,7 @@ public static class DependencyInjection
 
         // Inventory
         services.AddScoped<IStockLedger, StockLedger>();
+        services.AddScoped<IRowLocker, RowLocker>();
 
         return services;
     }

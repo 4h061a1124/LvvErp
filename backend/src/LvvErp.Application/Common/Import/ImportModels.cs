@@ -19,6 +19,7 @@ public static class ImportErrorCodes
     public const string InvalidDate = "InvalidDate";
     public const string DuplicateInFile = "DuplicateInFile";
     public const string AlreadyExists = "AlreadyExists";
+    public const string DuplicateTaxCode = "DuplicateTaxCode";
 
     // Lookups that didn't match by code or name
     public const string UnknownDepartment = "UnknownDepartment";

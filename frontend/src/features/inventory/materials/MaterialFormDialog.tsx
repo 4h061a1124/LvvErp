@@ -60,6 +60,7 @@ const EMPTY: MaterialFormValues = {
   unitId: '',
   groupId: '',
   minStock: '0',
+  receiptTolerancePercent: '0',
   trackLots: false,
   isActive: true,
 }
@@ -94,6 +95,7 @@ function MaterialForm({
           unitId: material.unitId,
           groupId: material.groupId,
           minStock: formatQuantityInput(material.minStock, i18n.language),
+          receiptTolerancePercent: formatQuantityInput(material.receiptTolerancePercent, i18n.language),
           trackLots: material.trackLots,
           isActive: material.isActive,
         }
@@ -200,7 +202,21 @@ function MaterialForm({
           >
             <Input id="minStock" inputMode="decimal" autoComplete="off" invalid={!!errors.minStock} {...register('minStock')} />
           </Field>
-          <div className="space-y-3 sm:pt-6">
+          <Field
+            label={t('inventory.materials.form.receiptTolerance')}
+            htmlFor="receiptTolerancePercent"
+            error={message(errors.receiptTolerancePercent?.message)}
+            hint={t('inventory.materials.form.receiptToleranceHint')}
+          >
+            <Input
+              id="receiptTolerancePercent"
+              inputMode="decimal"
+              autoComplete="off"
+              invalid={!!errors.receiptTolerancePercent}
+              {...register('receiptTolerancePercent')}
+            />
+          </Field>
+          <div className="space-y-3 sm:col-span-2">
             <Controller
               control={control}
               name="trackLots"

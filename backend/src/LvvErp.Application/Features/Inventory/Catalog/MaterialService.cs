@@ -145,6 +145,7 @@ public sealed class MaterialService(
         material.GroupId = request.GroupId;
         material.MinStock = request.MinStock;
         material.TrackLots = request.TrackLots;
+        material.ReceiptTolerancePercent = request.ReceiptTolerancePercent;
         material.IsActive = request.IsActive;
     }
 
@@ -169,14 +170,14 @@ public sealed class MaterialService(
     // Two-stage projection: SQL selects columns, then PhotoPath is turned into a URL in memory.
     private sealed record MaterialRow(
         Guid Id, string Code, string Name, string? Specification, Guid UnitId, string UnitName, Guid GroupId,
-        string GroupName, decimal MinStock, bool TrackLots, string? PhotoPath, bool IsActive,
+        string GroupName, decimal MinStock, bool TrackLots, decimal ReceiptTolerancePercent, string? PhotoPath, bool IsActive,
         DateTimeOffset CreatedAt, DateTimeOffset? UpdatedAt);
 
     private static readonly Expression<Func<Material, MaterialRow>> ToRow = m => new MaterialRow(
         m.Id, m.Code, m.Name, m.Specification, m.UnitId, m.Unit.Name, m.GroupId, m.Group.Name,
-        m.MinStock, m.TrackLots, m.PhotoPath, m.IsActive, m.CreatedAt, m.UpdatedAt);
+        m.MinStock, m.TrackLots, m.ReceiptTolerancePercent, m.PhotoPath, m.IsActive, m.CreatedAt, m.UpdatedAt);
 
     private MaterialDto ToDto(MaterialRow r) => new(
-        r.Id, r.Code, r.Name, r.Specification, r.UnitId, r.UnitName, r.GroupId, r.GroupName, r.MinStock, r.TrackLots,
+        r.Id, r.Code, r.Name, r.Specification, r.UnitId, r.UnitName, r.GroupId, r.GroupName, r.MinStock, r.TrackLots, r.ReceiptTolerancePercent,
         r.PhotoPath is null ? null : fileStorage.GetPublicUrl(r.PhotoPath), r.IsActive, r.CreatedAt, r.UpdatedAt);
 }

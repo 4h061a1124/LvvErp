@@ -55,6 +55,7 @@ export interface Material {
   groupName: string
   minStock: number
   trackLots: boolean
+  receiptTolerancePercent: number
   photoUrl: string | null
   isActive: boolean
   createdAt: string
@@ -69,6 +70,7 @@ export interface MaterialInput {
   groupId: string
   minStock: number
   trackLots: boolean
+  receiptTolerancePercent: number
   isActive: boolean
 }
 

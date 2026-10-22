@@ -2,7 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
-import { Link, useLocation, useNavigate, useParams } from 'react-router'
+import { Link, useLocation, useNavigate, useParams, useSearchParams } from 'react-router'
 import { Button } from '@/components/ui/Button'
 import { ConfirmDialog } from '@/components/ui/ConfirmDialog'
 import { Field } from '@/components/ui/Field'
@@ -12,20 +12,25 @@ import { useAuth } from '@/lib/auth-context'
 import { getErrorCode, getErrorMessage, getProblem } from '@/lib/errors'
 import { formatDate, formatDateTime, formatQuantity } from '@/lib/format'
 import { Permissions } from '@/lib/permissions'
+import { useOrder } from '@/features/purchasing/api'
 import { useWarehouses } from '../api'
 import type { LabelItem } from '../labels/labels'
 import { useDocument, useDocumentAction, useSaveDocument } from './api'
-import { documentSchema, documentToValues, newDocumentValues, valuesToInput, type DocumentFormValues } from './documentModel'
+import { documentSchema, documentToValues, newDocumentValues, receiptFromOrder, valuesToInput, type DocumentFormValues } from './documentModel'
 import { DocumentForm } from './DocumentForm'
 import { DocumentStatusBadge } from './DocumentStatusBadge'
-import { DOCUMENT_PATHS, type DocumentType, type StockDocument, type StockShortage } from './types'
+import { DOCUMENT_PATHS, type DocumentType, type OverReceiptLine, type StockDocument, type StockShortage } from './types'
 
 /** /inventory/{receipts|issues|transfers}/{id|new} */
 export function DocumentPage({ type }: { type: DocumentType }) {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { id } = useParams()
   const isNew = id === 'new'
   const document = useDocument(type, isNew ? undefined : id)
+  // /inventory/receipts/new?order={id}: receive what is still due on a purchase order.
+  const [params] = useSearchParams()
+  const orderId = isNew && type === 'Receipt' ? (params.get('order') ?? undefined) : undefined
+  const order = useOrder(orderId)
   const warehouses = useWarehouses(true)
   const canEdit = useAuth().can(Permissions.InventoryEditDocuments)
 
@@ -33,17 +38,21 @@ export function DocumentPage({ type }: { type: DocumentType }) {
     return <p className="py-10 text-center text-sm text-red-700">{getErrorMessage(document.error, t)}</p>
   }
   // Selects need their options before the form mounts (see CLAUDE.md).
-  if ((!isNew && !document.data) || !warehouses.data) {
+  if (orderId && order.isError) {
+    return <p className="py-10 text-center text-sm text-red-700">{getErrorMessage(order.error, t)}</p>
+  }
+  if ((!isNew && !document.data) || !warehouses.data || (orderId && !order.data)) {
     return <p className="py-10 text-center text-sm text-zinc-500">{t('common.loading')}</p>
   }
 
   const doc = isNew ? null : document.data!
   if (doc && (doc.status !== 'Draft' || !canEdit)) return <DocumentView key={doc.id} type={type} doc={doc} />
   if (!doc && !canEdit) return <p className="py-10 text-center text-sm text-zinc-500">{t('errors.forbidden')}</p>
-  return <DraftEditor key={doc?.id ?? 'new'} type={type} doc={doc} />
+  const initial = order.data ? receiptFromOrder(order.data, i18n.language) : undefined
+  return <DraftEditor key={doc?.id ?? `new-${orderId ?? ''}`} type={type} doc={doc} initial={initial} />
 }
 
-function DraftEditor({ type, doc }: { type: DocumentType; doc: StockDocument | null }) {
+function DraftEditor({ type, doc, initial }: { type: DocumentType; doc: StockDocument | null; initial?: DocumentFormValues }) {
   const { t, i18n } = useTranslation()
   const toast = useToast()
   const navigate = useNavigate()
@@ -54,7 +63,7 @@ function DraftEditor({ type, doc }: { type: DocumentType; doc: StockDocument | n
 
   const form = useForm<DocumentFormValues>({
     resolver: zodResolver(documentSchema(type)),
-    defaultValues: doc ? documentToValues(doc) : newDocumentValues(type),
+    defaultValues: doc ? documentToValues(doc) : (initial ?? newDocumentValues(type)),
   })
   const [confirmApprove, setConfirmApprove] = useState<DocumentFormValues | null>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
@@ -63,6 +72,9 @@ function DraftEditor({ type, doc }: { type: DocumentType; doc: StockDocument | n
   const location = useLocation()
   const [shortages, setShortages] = useState<StockShortage[]>(
     () => (location.state as { shortages?: StockShortage[] } | null)?.shortages ?? [],
+  )
+  const [overReceipt, setOverReceipt] = useState<OverReceiptLine[]>(
+    () => (location.state as { overReceipt?: OverReceiptLine[] } | null)?.overReceipt ?? [],
   )
   const [busy, setBusy] = useState(false)
 
@@ -83,6 +95,7 @@ function DraftEditor({ type, doc }: { type: DocumentType; doc: StockDocument | n
     setBusy(false)
     if (!saved) return
     setShortages([])
+    setOverReceipt([])
     toast.success(t('inventory.documents.saved', { number: saved.number }))
     if (!doc) navigate(`${route}/${saved.id}`, { replace: true })
   })
@@ -99,10 +112,14 @@ function DraftEditor({ type, doc }: { type: DocumentType; doc: StockDocument | n
       toast.success(t('inventory.documents.approved', { number: saved.number }))
       if (!doc) navigate(`${route}/${saved.id}`, { replace: true })
     } catch (err) {
-      const missing = getErrorCode(err) === 'InsufficientStock' ? ((getProblem(err)?.details as StockShortage[]) ?? []) : []
-      if (!missing.length) toast.error(getErrorMessage(err, t))
-      if (doc) setShortages(missing)
-      else navigate(`${route}/${saved.id}`, { replace: true, state: { shortages: missing } })
+      const code = getErrorCode(err)
+      const missing = code === 'InsufficientStock' ? ((getProblem(err)?.details as StockShortage[]) ?? []) : []
+      const over = code === 'OverReceipt' ? ((getProblem(err)?.details as OverReceiptLine[]) ?? []) : []
+      if (!missing.length && !over.length) toast.error(getErrorMessage(err, t))
+      if (doc) {
+        setShortages(missing)
+        setOverReceipt(over)
+      } else navigate(`${route}/${saved.id}`, { replace: true, state: { shortages: missing, overReceipt: over } })
     }
     setBusy(false)
   }
@@ -164,6 +181,26 @@ function DraftEditor({ type, doc }: { type: DocumentType; doc: StockDocument | n
                   lot: s.lotNumber ? ` · ${t('inventory.documents.lot')} ${s.lotNumber}` : '',
                   requested: formatQuantity(s.requested, i18n.language),
                   available: formatQuantity(s.available, i18n.language),
+                })}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+
+      {overReceipt.length > 0 && (
+        <div role="alert" className="mb-4 border-l-[3px] border-red-600 bg-red-50 px-3 py-2 text-[13px] text-red-800">
+          <div className="font-medium">{t('errors.codes.OverReceipt')}</div>
+          <ul className="mt-1 list-inside list-disc">
+            {overReceipt.map((o) => (
+              <li key={o.lineNo}>
+                {t('inventory.documents.overReceiptLine', {
+                  line: o.lineNo,
+                  code: o.materialCode,
+                  ordered: formatQuantity(o.ordered, i18n.language),
+                  received: formatQuantity(o.received, i18n.language),
+                  receiving: formatQuantity(o.receiving, i18n.language),
+                  allowed: formatQuantity(o.allowed, i18n.language),
                 })}
               </li>
             ))}
@@ -249,6 +286,7 @@ function DocumentView({ type, doc }: { type: DocumentType; doc: StockDocument })
     ...(type === 'Transfer' ? ([[t('inventory.documents.toWarehouse'), doc.toWarehouseName]] as [string, string | null][]) : []),
     ...(doc.reason ? ([[t('inventory.documents.reason'), t(`inventory.documents.reasons.${doc.reason}`)]] as [string, string][]) : []),
     ...(type === 'Receipt' ? ([[t('inventory.documents.partner'), doc.partner]] as [string, string | null][]) : []),
+    ...(doc.purchaseOrderId ? ([[t('inventory.documents.purchaseOrder'), doc.purchaseOrderNumber]] as [string, string | null][]) : []),
     ...(type === 'Issue'
       ? ([
           [t('inventory.documents.employee'), doc.employeeName],
@@ -278,6 +316,11 @@ function DocumentView({ type, doc }: { type: DocumentType; doc: StockDocument })
               ← {t(`inventory.documents.title.${type}`)}
             </Link>
             <DocumentStatusBadge status={doc.status} />
+            {doc.purchaseOrderId && (
+              <Link to={`/purchasing/orders/${doc.purchaseOrderId}`} className="tabular text-brand-700 hover:underline">
+                {t('inventory.documents.purchaseOrder')} {doc.purchaseOrderNumber}
+              </Link>
+            )}
           </span>
         }
         actions={

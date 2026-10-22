@@ -26,6 +26,8 @@ public sealed class StockDocumentConfiguration : IEntityTypeConfiguration<StockD
         builder.HasOne(d => d.ToWarehouse).WithMany().HasForeignKey(d => d.ToWarehouseId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(d => d.Department).WithMany().HasForeignKey(d => d.DepartmentId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(d => d.Employee).WithMany().HasForeignKey(d => d.EmployeeId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(d => d.PurchaseOrder).WithMany().HasForeignKey(d => d.PurchaseOrderId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasIndex(d => d.PurchaseOrderId);
 
         builder.HasMany(d => d.Lines).WithOne(l => l.Document).HasForeignKey(l => l.DocumentId).OnDelete(DeleteBehavior.Cascade);
 
@@ -47,9 +49,11 @@ public sealed class StockDocumentLineConfiguration : IEntityTypeConfiguration<St
         builder.HasOne(l => l.Material).WithMany().HasForeignKey(l => l.MaterialId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(l => l.Location).WithMany().HasForeignKey(l => l.LocationId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(l => l.ToLocation).WithMany().HasForeignKey(l => l.ToLocationId).OnDelete(DeleteBehavior.Restrict);
+        builder.HasOne(l => l.PurchaseOrderLine).WithMany().HasForeignKey(l => l.PurchaseOrderLineId).OnDelete(DeleteBehavior.Restrict);
         builder.HasOne(l => l.Lot).WithMany().HasForeignKey(l => l.LotId).OnDelete(DeleteBehavior.Restrict);
 
         builder.HasIndex(l => new { l.DocumentId, l.LineNo }).IsUnique();
+        builder.HasIndex(l => l.PurchaseOrderLineId);
         builder.HasIndex(l => l.MaterialId);
     }
 }

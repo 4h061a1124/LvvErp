@@ -12,7 +12,8 @@ public sealed record ReceiptLineRequest(
     DateOnly? ManufactureDate,
     DateOnly? ExpiryDate,
     decimal Quantity,
-    string? Note = null);
+    string? Note = null,
+    Guid? PurchaseOrderLineId = null);
 
 public sealed record SaveStockReceiptRequest(
     DateOnly DocumentDate,
@@ -20,12 +21,14 @@ public sealed record SaveStockReceiptRequest(
     StockDocumentReason Reason,
     string? Partner,
     string? Note,
-    IReadOnlyList<ReceiptLineRequest> Lines)
+    IReadOnlyList<ReceiptLineRequest> Lines,
+    Guid? PurchaseOrderId = null)
 {
     public StockDocumentDraft ToDraft() => new(
         StockDocumentType.Receipt, DocumentDate, WarehouseId, null, Reason, Partner, null, null, Note,
         Lines.Select(l => new StockLineDraft(l.MaterialId, l.LocationId, null, null, l.LotNumber, l.ManufactureDate,
-            l.ExpiryDate, l.Quantity, l.Note)).ToList());
+            l.ExpiryDate, l.Quantity, l.Note, l.PurchaseOrderLineId)).ToList(),
+        PurchaseOrderId);
 }
 
 public sealed record IssueLineRequest(Guid MaterialId, Guid? LocationId, Guid? LotId, decimal Quantity, string? Note = null);
@@ -83,7 +86,8 @@ public sealed record StockDocumentDraft(
     Guid? DepartmentId,
     Guid? EmployeeId,
     string? Note,
-    IReadOnlyList<StockLineDraft> Lines);
+    IReadOnlyList<StockLineDraft> Lines,
+    Guid? PurchaseOrderId = null);
 
 public sealed record StockLineDraft(
     Guid MaterialId,
@@ -94,4 +98,5 @@ public sealed record StockLineDraft(
     DateOnly? ManufactureDate,
     DateOnly? ExpiryDate,
     decimal Quantity,
-    string? Note);
+    string? Note,
+    Guid? PurchaseOrderLineId = null);

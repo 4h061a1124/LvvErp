@@ -1,6 +1,7 @@
 using LvvErp.Domain.Features.Employees;
 using LvvErp.Domain.Features.Identity;
 using LvvErp.Domain.Features.Inventory;
+using LvvErp.Domain.Features.Purchasing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 
@@ -28,6 +29,14 @@ public interface IAppDbContext
     DbSet<StockDocumentLine> StockDocumentLines { get; }
     DbSet<StockTransaction> StockTransactions { get; }
     DbSet<StockBalance> StockBalances { get; }
+
+    DbSet<Supplier> Suppliers { get; }
+    DbSet<PurchasingSettings> PurchasingSettings { get; }
+    DbSet<PurchaseRequest> PurchaseRequests { get; }
+    DbSet<PurchaseRequestLine> PurchaseRequestLines { get; }
+    DbSet<PurchaseOrder> PurchaseOrders { get; }
+    DbSet<PurchaseOrderLine> PurchaseOrderLines { get; }
+    DbSet<PurchaseOrderLineSource> PurchaseOrderLineSources { get; }
 
     /// <summary>For generic services over several entity types (e.g. simple catalogs).</summary>
     DbSet<TEntity> Set<TEntity>() where TEntity : class;

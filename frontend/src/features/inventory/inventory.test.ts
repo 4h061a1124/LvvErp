@@ -81,12 +81,13 @@ describe('materialSchema', () => {
     groupId: 'g',
     minStock: '12,5',
     trackLots: false,
+    receiptTolerancePercent: '2,5',
     isActive: true,
   }
 
   it('accepts a Vietnamese decimal and converts it', () => {
     const input = toMaterialInput(materialSchema.parse(valid))
-    expect(input).toMatchObject({ code: 'BL-M8', minStock: 12.5, specification: null })
+    expect(input).toMatchObject({ code: 'BL-M8', minStock: 12.5, receiptTolerancePercent: 2.5, specification: null })
   })
 
   it.each([
@@ -96,6 +97,9 @@ describe('materialSchema', () => {
     ['unitId', ''],
     ['minStock', '-1'],
     ['minStock', '0,1255'],
+    ['receiptTolerancePercent', '101'],
+    ['receiptTolerancePercent', '1,255'],
+    ['receiptTolerancePercent', ''],
   ])('rejects invalid %s %j', (field, value) => {
     expect(materialSchema.safeParse({ ...valid, [field]: value }).success).toBe(false)
   })

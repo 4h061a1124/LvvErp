@@ -489,6 +489,11 @@ namespace LvvErp.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(300)")
                         .HasColumnName("photo_path");
 
+                    b.Property<decimal>("ReceiptTolerancePercent")
+                        .HasPrecision(5, 2)
+                        .HasColumnType("numeric(5,2)")
+                        .HasColumnName("receipt_tolerance_percent");
+
                     b.Property<string>("Specification")
                         .HasMaxLength(500)
                         .HasColumnType("character varying(500)")
@@ -527,6 +532,8 @@ namespace LvvErp.Infrastructure.Persistence.Migrations
                     b.ToTable("materials", null, t =>
                         {
                             t.HasCheckConstraint("ck_materials_min_stock", "min_stock >= 0");
+
+                            t.HasCheckConstraint("ck_materials_receipt_tolerance", "receipt_tolerance_percent BETWEEN 0 AND 100");
                         });
                 });
 
@@ -706,6 +713,10 @@ namespace LvvErp.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(200)")
                         .HasColumnName("partner");
 
+                    b.Property<Guid?>("PurchaseOrderId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("purchase_order_id");
+
                     b.Property<string>("Reason")
                         .HasMaxLength(30)
                         .HasColumnType("character varying(30)")
@@ -752,6 +763,9 @@ namespace LvvErp.Infrastructure.Persistence.Migrations
                     b.HasIndex("Number")
                         .IsUnique()
                         .HasDatabaseName("ix_stock_documents_number");
+
+                    b.HasIndex("PurchaseOrderId")
+                        .HasDatabaseName("ix_stock_documents_purchase_order_id");
 
                     b.HasIndex("ToWarehouseId")
                         .HasDatabaseName("ix_stock_documents_to_warehouse_id");
@@ -809,6 +823,10 @@ namespace LvvErp.Infrastructure.Persistence.Migrations
                         .HasColumnType("character varying(200)")
                         .HasColumnName("note");
 
+                    b.Property<Guid?>("PurchaseOrderLineId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("purchase_order_line_id");
+
                     b.Property<decimal>("Quantity")
                         .HasPrecision(18, 3)
                         .HasColumnType("numeric(18,3)")
@@ -829,6 +847,9 @@ namespace LvvErp.Infrastructure.Persistence.Migrations
 
                     b.HasIndex("MaterialId")
                         .HasDatabaseName("ix_stock_document_lines_material_id");
+
+                    b.HasIndex("PurchaseOrderLineId")
+                        .HasDatabaseName("ix_stock_document_lines_purchase_order_line_id");
 
                     b.HasIndex("ToLocationId")
                         .HasDatabaseName("ix_stock_document_lines_to_location_id");
@@ -1037,6 +1058,616 @@ namespace LvvErp.Infrastructure.Persistence.Migrations
                     b.ToTable("warehouses", (string)null);
                 });
 
+            modelBuilder.Entity("LvvErp.Domain.Features.Purchasing.PurchaseOrder", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("ApprovalLevel")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("approval_level");
+
+                    b.Property<DateTimeOffset?>("ApprovedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("approved_at");
+
+                    b.Property<string>("ApprovedBy")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("approved_by");
+
+                    b.Property<string>("CancelReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("cancel_reason");
+
+                    b.Property<DateTimeOffset?>("CancelledAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("cancelled_at");
+
+                    b.Property<string>("CancelledBy")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("cancelled_by");
+
+                    b.Property<string>("CloseReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("close_reason");
+
+                    b.Property<DateTimeOffset?>("ClosedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("closed_at");
+
+                    b.Property<string>("ClosedBy")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("closed_by");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("created_by");
+
+                    b.Property<DateOnly?>("ExpectedDate")
+                        .HasColumnType("date")
+                        .HasColumnName("expected_date");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("note");
+
+                    b.Property<string>("Number")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("number");
+
+                    b.Property<DateOnly>("OrderDate")
+                        .HasColumnType("date")
+                        .HasColumnName("order_date");
+
+                    b.Property<int>("PaymentTermDays")
+                        .HasColumnType("integer")
+                        .HasColumnName("payment_term_days");
+
+                    b.Property<string>("RejectReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("reject_reason");
+
+                    b.Property<DateTimeOffset?>("RejectedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("rejected_at");
+
+                    b.Property<string>("RejectedBy")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("rejected_by");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("status");
+
+                    b.Property<DateTimeOffset?>("SubmittedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("submitted_at");
+
+                    b.Property<string>("SubmittedBy")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("submitted_by");
+
+                    b.Property<decimal>("Subtotal")
+                        .HasPrecision(18)
+                        .HasColumnType("numeric(18,0)")
+                        .HasColumnName("subtotal");
+
+                    b.Property<Guid>("SupplierId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("supplier_id");
+
+                    b.Property<decimal>("Total")
+                        .HasPrecision(18)
+                        .HasColumnType("numeric(18,0)")
+                        .HasColumnName("total");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("updated_by");
+
+                    b.Property<decimal>("VatAmount")
+                        .HasPrecision(18)
+                        .HasColumnType("numeric(18,0)")
+                        .HasColumnName("vat_amount");
+
+                    b.Property<string>("VatRate")
+                        .IsRequired()
+                        .HasMaxLength(10)
+                        .HasColumnType("character varying(10)")
+                        .HasColumnName("vat_rate");
+
+                    b.Property<Guid>("WarehouseId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("warehouse_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_purchase_orders");
+
+                    b.HasIndex("ExpectedDate")
+                        .HasDatabaseName("ix_purchase_orders_expected_date");
+
+                    b.HasIndex("Number")
+                        .IsUnique()
+                        .HasDatabaseName("ix_purchase_orders_number");
+
+                    b.HasIndex("SupplierId")
+                        .HasDatabaseName("ix_purchase_orders_supplier_id");
+
+                    b.HasIndex("WarehouseId")
+                        .HasDatabaseName("ix_purchase_orders_warehouse_id");
+
+                    b.HasIndex("Status", "OrderDate")
+                        .HasDatabaseName("ix_purchase_orders_status_order_date");
+
+                    b.ToTable("purchase_orders", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_purchase_orders_payment_term_days", "payment_term_days BETWEEN 0 AND 365");
+
+                            t.HasCheckConstraint("ck_purchase_orders_total", "subtotal >= 0 AND vat_amount >= 0 AND total = subtotal + vat_amount");
+                        });
+                });
+
+            modelBuilder.Entity("LvvErp.Domain.Features.Purchasing.PurchaseOrderLine", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<decimal>("Amount")
+                        .HasPrecision(18)
+                        .HasColumnType("numeric(18,0)")
+                        .HasColumnName("amount");
+
+                    b.Property<int>("LineNo")
+                        .HasColumnType("integer")
+                        .HasColumnName("line_no");
+
+                    b.Property<Guid>("MaterialId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("material_id");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("note");
+
+                    b.Property<Guid>("OrderId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("order_id");
+
+                    b.Property<string>("OverOrderReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("over_order_reason");
+
+                    b.Property<decimal>("Quantity")
+                        .HasPrecision(18, 3)
+                        .HasColumnType("numeric(18,3)")
+                        .HasColumnName("quantity");
+
+                    b.Property<decimal>("UnitPrice")
+                        .HasPrecision(18, 2)
+                        .HasColumnType("numeric(18,2)")
+                        .HasColumnName("unit_price");
+
+                    b.HasKey("Id")
+                        .HasName("pk_purchase_order_lines");
+
+                    b.HasIndex("MaterialId")
+                        .HasDatabaseName("ix_purchase_order_lines_material_id");
+
+                    b.HasIndex("OrderId", "LineNo")
+                        .IsUnique()
+                        .HasDatabaseName("ix_purchase_order_lines_order_id_line_no");
+
+                    b.HasIndex("OrderId", "MaterialId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_purchase_order_lines_order_id_material_id");
+
+                    b.ToTable("purchase_order_lines", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_purchase_order_lines_price", "unit_price >= 0 AND amount >= 0");
+
+                            t.HasCheckConstraint("ck_purchase_order_lines_quantity", "quantity > 0");
+                        });
+                });
+
+            modelBuilder.Entity("LvvErp.Domain.Features.Purchasing.PurchaseOrderLineSource", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<Guid>("OrderLineId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("order_line_id");
+
+                    b.Property<decimal>("Quantity")
+                        .HasPrecision(18, 3)
+                        .HasColumnType("numeric(18,3)")
+                        .HasColumnName("quantity");
+
+                    b.Property<Guid>("RequestLineId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("request_line_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_purchase_order_line_sources");
+
+                    b.HasIndex("RequestLineId")
+                        .HasDatabaseName("ix_purchase_order_line_sources_request_line_id");
+
+                    b.HasIndex("OrderLineId", "RequestLineId")
+                        .IsUnique()
+                        .HasDatabaseName("ix_purchase_order_line_sources_order_line_id_request_line_id");
+
+                    b.ToTable("purchase_order_line_sources", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_purchase_order_line_sources_quantity", "quantity >= 0");
+                        });
+                });
+
+            modelBuilder.Entity("LvvErp.Domain.Features.Purchasing.PurchaseRequest", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<DateTimeOffset?>("ApprovedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("approved_at");
+
+                    b.Property<string>("ApprovedBy")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("approved_by");
+
+                    b.Property<string>("CancelReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("cancel_reason");
+
+                    b.Property<DateTimeOffset?>("CancelledAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("cancelled_at");
+
+                    b.Property<string>("CancelledBy")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("cancelled_by");
+
+                    b.Property<string>("CloseReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("close_reason");
+
+                    b.Property<DateTimeOffset?>("ClosedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("closed_at");
+
+                    b.Property<string>("ClosedBy")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("closed_by");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("created_by");
+
+                    b.Property<Guid>("DepartmentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("department_id");
+
+                    b.Property<DateOnly?>("NeededDate")
+                        .HasColumnType("date")
+                        .HasColumnName("needed_date");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("note");
+
+                    b.Property<string>("Number")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("number");
+
+                    b.Property<string>("RejectReason")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("reject_reason");
+
+                    b.Property<DateTimeOffset?>("RejectedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("rejected_at");
+
+                    b.Property<string>("RejectedBy")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("rejected_by");
+
+                    b.Property<DateOnly>("RequestDate")
+                        .HasColumnType("date")
+                        .HasColumnName("request_date");
+
+                    b.Property<Guid>("RequesterId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("requester_id");
+
+                    b.Property<string>("Status")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("status");
+
+                    b.Property<DateTimeOffset?>("SubmittedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("submitted_at");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_purchase_requests");
+
+                    b.HasIndex("DepartmentId")
+                        .HasDatabaseName("ix_purchase_requests_department_id");
+
+                    b.HasIndex("Number")
+                        .IsUnique()
+                        .HasDatabaseName("ix_purchase_requests_number");
+
+                    b.HasIndex("RequestDate")
+                        .HasDatabaseName("ix_purchase_requests_request_date");
+
+                    b.HasIndex("RequesterId")
+                        .HasDatabaseName("ix_purchase_requests_requester_id");
+
+                    b.HasIndex("Status", "DepartmentId")
+                        .HasDatabaseName("ix_purchase_requests_status_department_id");
+
+                    b.ToTable("purchase_requests", (string)null);
+                });
+
+            modelBuilder.Entity("LvvErp.Domain.Features.Purchasing.PurchaseRequestLine", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int>("LineNo")
+                        .HasColumnType("integer")
+                        .HasColumnName("line_no");
+
+                    b.Property<Guid>("MaterialId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("material_id");
+
+                    b.Property<string>("Note")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("note");
+
+                    b.Property<decimal>("Quantity")
+                        .HasPrecision(18, 3)
+                        .HasColumnType("numeric(18,3)")
+                        .HasColumnName("quantity");
+
+                    b.Property<Guid>("RequestId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("request_id");
+
+                    b.HasKey("Id")
+                        .HasName("pk_purchase_request_lines");
+
+                    b.HasIndex("MaterialId")
+                        .HasDatabaseName("ix_purchase_request_lines_material_id");
+
+                    b.HasIndex("RequestId", "LineNo")
+                        .IsUnique()
+                        .HasDatabaseName("ix_purchase_request_lines_request_id_line_no");
+
+                    b.ToTable("purchase_request_lines", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_purchase_request_lines_quantity", "quantity > 0");
+                        });
+                });
+
+            modelBuilder.Entity("LvvErp.Domain.Features.Purchasing.PurchasingSettings", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("CompanyAddress")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("company_address");
+
+                    b.Property<string>("CompanyName")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("company_name");
+
+                    b.Property<string>("CompanyPhone")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("company_phone");
+
+                    b.Property<string>("CompanyTaxCode")
+                        .HasMaxLength(14)
+                        .HasColumnType("character varying(14)")
+                        .HasColumnName("company_tax_code");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("created_by");
+
+                    b.Property<decimal>("DirectorApprovalThreshold")
+                        .HasPrecision(18)
+                        .HasColumnType("numeric(18,0)")
+                        .HasColumnName("director_approval_threshold");
+
+                    b.Property<Guid?>("PurchasingDepartmentId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("purchasing_department_id");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_purchasing_settings");
+
+                    b.HasIndex("PurchasingDepartmentId")
+                        .HasDatabaseName("ix_purchasing_settings_purchasing_department_id");
+
+                    b.ToTable("purchasing_settings", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_purchasing_settings_threshold", "director_approval_threshold > 0");
+                        });
+                });
+
+            modelBuilder.Entity("LvvErp.Domain.Features.Purchasing.Supplier", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<string>("Address")
+                        .HasMaxLength(500)
+                        .HasColumnType("character varying(500)")
+                        .HasColumnName("address");
+
+                    b.Property<string>("Code")
+                        .IsRequired()
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("code");
+
+                    b.Property<string>("ContactName")
+                        .HasMaxLength(100)
+                        .HasColumnType("character varying(100)")
+                        .HasColumnName("contact_name");
+
+                    b.Property<DateTimeOffset>("CreatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("created_at");
+
+                    b.Property<string>("CreatedBy")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("created_by");
+
+                    b.Property<string>("Email")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("email");
+
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("boolean")
+                        .HasColumnName("is_active");
+
+                    b.Property<string>("Name")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("name")
+                        .UseCollation("vi_vn");
+
+                    b.Property<int>("PaymentTermDays")
+                        .HasColumnType("integer")
+                        .HasColumnName("payment_term_days");
+
+                    b.Property<string>("PaymentTerms")
+                        .HasMaxLength(200)
+                        .HasColumnType("character varying(200)")
+                        .HasColumnName("payment_terms");
+
+                    b.Property<string>("Phone")
+                        .HasMaxLength(20)
+                        .HasColumnType("character varying(20)")
+                        .HasColumnName("phone");
+
+                    b.Property<string>("TaxCode")
+                        .HasMaxLength(14)
+                        .HasColumnType("character varying(14)")
+                        .HasColumnName("tax_code");
+
+                    b.Property<DateTimeOffset?>("UpdatedAt")
+                        .HasColumnType("timestamp with time zone")
+                        .HasColumnName("updated_at");
+
+                    b.Property<string>("UpdatedBy")
+                        .HasMaxLength(50)
+                        .HasColumnType("character varying(50)")
+                        .HasColumnName("updated_by");
+
+                    b.HasKey("Id")
+                        .HasName("pk_suppliers");
+
+                    b.HasIndex("Code")
+                        .IsUnique()
+                        .HasDatabaseName("ix_suppliers_code");
+
+                    b.HasIndex("TaxCode")
+                        .IsUnique()
+                        .HasDatabaseName("ix_suppliers_tax_code")
+                        .HasFilter("tax_code IS NOT NULL");
+
+                    b.ToTable("suppliers", null, t =>
+                        {
+                            t.HasCheckConstraint("ck_suppliers_payment_term_days", "payment_term_days BETWEEN 0 AND 365");
+                        });
+                });
+
             modelBuilder.Entity("LvvErp.Domain.Features.Employees.Employee", b =>
                 {
                     b.HasOne("LvvErp.Domain.Features.Employees.Department", "Department")
@@ -1165,6 +1796,12 @@ namespace LvvErp.Infrastructure.Persistence.Migrations
                         .OnDelete(DeleteBehavior.Restrict)
                         .HasConstraintName("fk_stock_documents_employees_employee_id");
 
+                    b.HasOne("LvvErp.Domain.Features.Purchasing.PurchaseOrder", "PurchaseOrder")
+                        .WithMany()
+                        .HasForeignKey("PurchaseOrderId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_stock_documents_purchase_orders_purchase_order_id");
+
                     b.HasOne("LvvErp.Domain.Features.Inventory.Warehouse", "ToWarehouse")
                         .WithMany()
                         .HasForeignKey("ToWarehouseId")
@@ -1181,6 +1818,8 @@ namespace LvvErp.Infrastructure.Persistence.Migrations
                     b.Navigation("Department");
 
                     b.Navigation("Employee");
+
+                    b.Navigation("PurchaseOrder");
 
                     b.Navigation("ToWarehouse");
 
@@ -1215,6 +1854,12 @@ namespace LvvErp.Infrastructure.Persistence.Migrations
                         .IsRequired()
                         .HasConstraintName("fk_stock_document_lines_materials_material_id");
 
+                    b.HasOne("LvvErp.Domain.Features.Purchasing.PurchaseOrderLine", "PurchaseOrderLine")
+                        .WithMany()
+                        .HasForeignKey("PurchaseOrderLineId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_stock_document_lines_purchase_order_lines_purchase_order_li");
+
                     b.HasOne("LvvErp.Domain.Features.Inventory.Location", "ToLocation")
                         .WithMany()
                         .HasForeignKey("ToLocationId")
@@ -1228,6 +1873,8 @@ namespace LvvErp.Infrastructure.Persistence.Migrations
                     b.Navigation("Lot");
 
                     b.Navigation("Material");
+
+                    b.Navigation("PurchaseOrderLine");
 
                     b.Navigation("ToLocation");
                 });
@@ -1287,6 +1934,122 @@ namespace LvvErp.Infrastructure.Persistence.Migrations
                     b.Navigation("Warehouse");
                 });
 
+            modelBuilder.Entity("LvvErp.Domain.Features.Purchasing.PurchaseOrder", b =>
+                {
+                    b.HasOne("LvvErp.Domain.Features.Purchasing.Supplier", "Supplier")
+                        .WithMany()
+                        .HasForeignKey("SupplierId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_purchase_orders_suppliers_supplier_id");
+
+                    b.HasOne("LvvErp.Domain.Features.Inventory.Warehouse", "Warehouse")
+                        .WithMany()
+                        .HasForeignKey("WarehouseId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_purchase_orders_warehouses_warehouse_id");
+
+                    b.Navigation("Supplier");
+
+                    b.Navigation("Warehouse");
+                });
+
+            modelBuilder.Entity("LvvErp.Domain.Features.Purchasing.PurchaseOrderLine", b =>
+                {
+                    b.HasOne("LvvErp.Domain.Features.Inventory.Material", "Material")
+                        .WithMany()
+                        .HasForeignKey("MaterialId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_purchase_order_lines_materials_material_id");
+
+                    b.HasOne("LvvErp.Domain.Features.Purchasing.PurchaseOrder", "Order")
+                        .WithMany("Lines")
+                        .HasForeignKey("OrderId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_purchase_order_lines_purchase_orders_order_id");
+
+                    b.Navigation("Material");
+
+                    b.Navigation("Order");
+                });
+
+            modelBuilder.Entity("LvvErp.Domain.Features.Purchasing.PurchaseOrderLineSource", b =>
+                {
+                    b.HasOne("LvvErp.Domain.Features.Purchasing.PurchaseOrderLine", "OrderLine")
+                        .WithMany("Sources")
+                        .HasForeignKey("OrderLineId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_purchase_order_line_sources_purchase_order_lines_order_line");
+
+                    b.HasOne("LvvErp.Domain.Features.Purchasing.PurchaseRequestLine", "RequestLine")
+                        .WithMany()
+                        .HasForeignKey("RequestLineId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_purchase_order_line_sources_purchase_request_lines_request_");
+
+                    b.Navigation("OrderLine");
+
+                    b.Navigation("RequestLine");
+                });
+
+            modelBuilder.Entity("LvvErp.Domain.Features.Purchasing.PurchaseRequest", b =>
+                {
+                    b.HasOne("LvvErp.Domain.Features.Employees.Department", "Department")
+                        .WithMany()
+                        .HasForeignKey("DepartmentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_purchase_requests_departments_department_id");
+
+                    b.HasOne("LvvErp.Domain.Features.Identity.User", "Requester")
+                        .WithMany()
+                        .HasForeignKey("RequesterId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_purchase_requests_users_requester_id");
+
+                    b.Navigation("Department");
+
+                    b.Navigation("Requester");
+                });
+
+            modelBuilder.Entity("LvvErp.Domain.Features.Purchasing.PurchaseRequestLine", b =>
+                {
+                    b.HasOne("LvvErp.Domain.Features.Inventory.Material", "Material")
+                        .WithMany()
+                        .HasForeignKey("MaterialId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired()
+                        .HasConstraintName("fk_purchase_request_lines_materials_material_id");
+
+                    b.HasOne("LvvErp.Domain.Features.Purchasing.PurchaseRequest", "Request")
+                        .WithMany("Lines")
+                        .HasForeignKey("RequestId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired()
+                        .HasConstraintName("fk_purchase_request_lines_purchase_requests_request_id");
+
+                    b.Navigation("Material");
+
+                    b.Navigation("Request");
+                });
+
+            modelBuilder.Entity("LvvErp.Domain.Features.Purchasing.PurchasingSettings", b =>
+                {
+                    b.HasOne("LvvErp.Domain.Features.Employees.Department", "PurchasingDepartment")
+                        .WithMany()
+                        .HasForeignKey("PurchasingDepartmentId")
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .HasConstraintName("fk_purchasing_settings_departments_purchasing_department_id");
+
+                    b.Navigation("PurchasingDepartment");
+                });
+
             modelBuilder.Entity("LvvErp.Domain.Features.Inventory.StockDocument", b =>
                 {
                     b.Navigation("Lines");
@@ -1295,6 +2058,21 @@ namespace LvvErp.Infrastructure.Persistence.Migrations
             modelBuilder.Entity("LvvErp.Domain.Features.Inventory.Warehouse", b =>
                 {
                     b.Navigation("Locations");
+                });
+
+            modelBuilder.Entity("LvvErp.Domain.Features.Purchasing.PurchaseOrder", b =>
+                {
+                    b.Navigation("Lines");
+                });
+
+            modelBuilder.Entity("LvvErp.Domain.Features.Purchasing.PurchaseOrderLine", b =>
+                {
+                    b.Navigation("Sources");
+                });
+
+            modelBuilder.Entity("LvvErp.Domain.Features.Purchasing.PurchaseRequest", b =>
+                {
+                    b.Navigation("Lines");
                 });
 #pragma warning restore 612, 618
         }

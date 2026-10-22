@@ -1,14 +1,15 @@
-import { X } from 'lucide-react'
+import { Split, X } from 'lucide-react'
 import { useEffect, useRef } from 'react'
 import { Controller, useFieldArray, useWatch, type Control, type FieldErrors, type UseFormReturn } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
+import { Link } from 'react-router'
 import { Button } from '@/components/ui/Button'
 import { Field, Input, Select } from '@/components/ui/Field'
 import { useDepartments } from '@/features/employees/api'
 import { formatDate, formatQuantity, parseQuantity, todayIso } from '@/lib/format'
 import { useLocations, useWarehouses } from '../api'
 import { useAvailableStock, useLots } from './api'
-import { emptyLine, sourceKey, type DocumentFormValues } from './documentModel'
+import { emptyLine, sourceKey, splitLine, type DocumentFormValues } from './documentModel'
 import { EmployeePicker, MaterialPicker } from './pickers'
 import { REASONS, type DocumentType } from './types'
 
@@ -27,6 +28,8 @@ export function DocumentForm({ type, form }: { type: DocumentType; form: UseForm
   const lines = useFieldArray({ control, name: 'lines', keyName: 'fieldKey' })
   const warehouseId = useWatch({ control, name: 'warehouseId' })
   const toWarehouseId = useWatch({ control, name: 'toWarehouseId' })
+  // A receipt from a purchase order: warehouse, reason and materials come from the order.
+  const purchaseOrder = useWatch({ control, name: 'purchaseOrder' })
 
   // Locations and lots belong to a warehouse: changing it invalidates what the lines picked.
   const previousWarehouse = useRef(warehouseId)
@@ -52,19 +55,33 @@ export function DocumentForm({ type, form }: { type: DocumentType; form: UseForm
 
   return (
     <div className="space-y-4">
+      {purchaseOrder && (
+        <div className="border-l-[3px] border-brand-600 bg-brand-50 px-3 py-2 text-[13px] text-zinc-800">
+          {t('inventory.documents.fromOrder')}{' '}
+          <Link to={`/purchasing/orders/${purchaseOrder.id}`} className="tabular font-medium text-brand-700 hover:underline">
+            {purchaseOrder.number}
+          </Link>
+          <span className="text-zinc-500"> · {t('inventory.documents.fromOrderHint')}</span>
+        </div>
+      )}
       <section className="grid gap-x-4 gap-y-3 rounded-[4px] border border-zinc-200 bg-white p-4 sm:grid-cols-2 lg:grid-cols-4">
         <Field label={t('inventory.documents.date')} htmlFor="documentDate" required error={message(errors.documentDate?.message)}>
           <Input id="documentDate" type="date" max={todayIso()} invalid={!!errors.documentDate} {...register('documentDate')} />
         </Field>
         <Field label={warehouseLabel} htmlFor="warehouseId" required error={message(errors.warehouseId?.message)}>
-          <Select id="warehouseId" invalid={!!errors.warehouseId} {...register('warehouseId')}>
-            <option value="">{t('common.choose')}</option>
-            {warehouses.data?.map((w) => (
-              <option key={w.id} value={w.id}>
-                {w.name}
-              </option>
-            ))}
-          </Select>
+          {purchaseOrder ? (
+            // Not a registered (disabled) select: react-hook-form would drop its value.
+            <Input id="warehouseId" value={warehouses.data?.find((w) => w.id === warehouseId)?.name ?? ''} disabled readOnly />
+          ) : (
+            <Select id="warehouseId" invalid={!!errors.warehouseId} {...register('warehouseId')}>
+              <option value="">{t('common.choose')}</option>
+              {warehouses.data?.map((w) => (
+                <option key={w.id} value={w.id}>
+                  {w.name}
+                </option>
+              ))}
+            </Select>
+          )}
         </Field>
         {type === 'Transfer' ? (
           <Field label={t('inventory.documents.toWarehouse')} htmlFor="toWarehouseId" required error={message(errors.toWarehouseId?.message)}>
@@ -79,13 +96,17 @@ export function DocumentForm({ type, form }: { type: DocumentType; form: UseForm
           </Field>
         ) : (
           <Field label={t('inventory.documents.reason')} htmlFor="reason" required error={message(errors.reason?.message)}>
-            <Select id="reason" invalid={!!errors.reason} {...register('reason')}>
-              {REASONS[type].map((r) => (
-                <option key={r} value={r}>
-                  {t(`inventory.documents.reasons.${r}`)}
-                </option>
-              ))}
-            </Select>
+            {purchaseOrder ? (
+              <Input id="reason" value={t('inventory.documents.reasons.Purchase')} disabled readOnly />
+            ) : (
+              <Select id="reason" invalid={!!errors.reason} {...register('reason')}>
+                {REASONS[type].map((r) => (
+                  <option key={r} value={r}>
+                    {t(`inventory.documents.reasons.${r}`)}
+                  </option>
+                ))}
+              </Select>
+            )}
           </Field>
         )}
         {type === 'Receipt' && (
@@ -136,9 +157,11 @@ export function DocumentForm({ type, form }: { type: DocumentType; form: UseForm
       <section className="rounded-[4px] border border-zinc-200 bg-white">
         <div className="flex items-center justify-between border-b border-zinc-200 px-3 py-2">
           <h2 className="text-sm font-semibold text-zinc-800">{t('inventory.documents.lines')}</h2>
-          <Button size="sm" onClick={() => lines.append(emptyLine())}>
-            {t('inventory.documents.addLine')}
-          </Button>
+          {!purchaseOrder && (
+            <Button size="sm" onClick={() => lines.append(emptyLine())}>
+              {t('inventory.documents.addLine')}
+            </Button>
+          )}
         </div>
 
         {lines.fields.length > 0 && (
@@ -172,14 +195,17 @@ export function DocumentForm({ type, form }: { type: DocumentType; form: UseForm
                 toWarehouseId={toWarehouseId}
                 errors={errors}
                 onRemove={() => lines.remove(index)}
+                onSplit={purchaseOrder ? () => lines.insert(index + 1, splitLine(getValues(`lines.${index}`))) : undefined}
               />
             ))}
           </ol>
         )}
 
-        <div className="border-t border-zinc-100 px-3 py-2.5">
-          <MaterialPicker value={null} clearOnSelect onChange={(material) => lines.append({ ...emptyLine(material), quantity: '1' })} />
-        </div>
+        {!purchaseOrder && (
+          <div className="border-t border-zinc-100 px-3 py-2.5">
+            <MaterialPicker value={null} clearOnSelect onChange={(material) => lines.append({ ...emptyLine(material), quantity: '1' })} />
+          </div>
+        )}
       </section>
     </div>
   )
@@ -194,9 +220,11 @@ interface LineRowProps {
   toWarehouseId: string
   errors: FieldErrors<DocumentFormValues>
   onRemove: () => void
+  /** Purchase-order receipts: add another line for the same order line (another lot). */
+  onSplit?: () => void
 }
 
-function LineRow({ index, type, control, form, warehouseId, toWarehouseId, errors, onRemove }: LineRowProps) {
+function LineRow({ index, type, control, form, warehouseId, toWarehouseId, errors, onRemove, onSplit }: LineRowProps) {
   const { t, i18n } = useTranslation()
   const { register, setValue } = form
   const line = useWatch({ control, name: `lines.${index}` })
@@ -224,6 +252,16 @@ function LineRow({ index, type, control, form, warehouseId, toWarehouseId, error
       <span className="tabular pt-1.5 text-[13px] text-zinc-500">{index + 1}</span>
 
       <div>
+        {onSplit ? (
+          <div className="pt-1 text-sm">
+            <span className="tabular mr-1.5 text-[13px] text-zinc-500">{material?.code}</span>
+            <span className="text-zinc-900">{material?.name}</span>
+            <button type="button" onClick={onSplit} className="ml-2 inline-flex items-center gap-1 text-xs text-brand-700 hover:underline">
+              <Split size={12} />
+              {t('inventory.documents.splitLine')}
+            </button>
+          </div>
+        ) : (
         <Controller
           control={control}
           name={`lines.${index}.material`}
@@ -239,6 +277,7 @@ function LineRow({ index, type, control, form, warehouseId, toWarehouseId, error
             />
           )}
         />
+        )}
         {lineErrors?.material && <p className="mt-1 text-xs text-red-600">{message(lineErrors.material.message)}</p>}
       </div>
 

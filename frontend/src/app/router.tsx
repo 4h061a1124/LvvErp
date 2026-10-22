@@ -74,6 +74,48 @@ export const router = createBrowserRouter([
             path: 'inventory/labels',
             lazy: async () => ({ Component: (await import('@/features/inventory/labels/LabelPrintPage')).LabelPrintPage }),
           },
+          {
+            path: 'purchasing/approvals',
+            lazy: async () => ({ Component: (await import('@/features/purchasing/approvals/ApprovalsPage')).ApprovalsPage }),
+          },
+          {
+            path: 'purchasing/requests',
+            lazy: async () => ({ Component: (await import('@/features/purchasing/requests/RequestListPage')).RequestListPage }),
+          },
+          {
+            path: 'purchasing/requests/:id',
+            lazy: async () => ({ Component: (await import('@/features/purchasing/requests/RequestPage')).RequestPage }),
+          },
+          {
+            path: 'purchasing/orders',
+            lazy: async () => ({ Component: (await import('@/features/purchasing/orders/OrderListPage')).OrderListPage }),
+          },
+          {
+            path: 'purchasing/orders/:id',
+            lazy: async () => ({ Component: (await import('@/features/purchasing/orders/OrderPage')).OrderPage }),
+          },
+          {
+            path: 'purchasing/orders/:id/print',
+            lazy: async () => ({ Component: (await import('@/features/purchasing/orders/OrderPrintPage')).OrderPrintPage }),
+          },
+          {
+            path: 'purchasing/reports',
+            lazy: async () => ({ Component: (await import('@/features/purchasing/reports/PurchasingReportsPage')).PurchasingReportsPage }),
+          },
+          {
+            path: 'purchasing/suppliers',
+            lazy: async () => ({ Component: (await import('@/features/purchasing/suppliers/SuppliersPage')).SuppliersPage }),
+          },
+          {
+            path: 'purchasing/settings',
+            lazy: async () => ({
+              Component: (await import('@/features/purchasing/settings/PurchasingSettingsPage')).PurchasingSettingsPage,
+            }),
+          },
+          {
+            path: 'admin/users',
+            lazy: async () => ({ Component: (await import('@/features/users/UsersPage')).UsersPage }),
+          },
           { path: '*', element: <NotFoundPage /> },
         ],
       },

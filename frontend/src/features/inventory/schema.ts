@@ -43,6 +43,11 @@ export const materialSchema = z.object({
   unitId: z.string().min(1, 'validation.required'),
   groupId: z.string().min(1, 'validation.required'),
   minStock: quantityText,
+  /** 0–100 with at most 2 decimals (backend decimal(5,2)). */
+  receiptTolerancePercent: z.string().refine((v) => {
+    const n = parseQuantity(v)
+    return n !== null && n >= 0 && n <= 100 && Math.abs(Math.round(n * 100) - n * 100) < 1e-6
+  }, 'validation.tolerance'),
   trackLots: z.boolean(),
   isActive: z.boolean(),
 })
@@ -54,5 +59,6 @@ export function toMaterialInput(values: MaterialFormValues): MaterialInput {
     code: values.code.toUpperCase(),
     specification: values.specification || null,
     minStock: parseQuantity(values.minStock) ?? 0,
+    receiptTolerancePercent: parseQuantity(values.receiptTolerancePercent) ?? 0,
   }
 }

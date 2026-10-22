@@ -1,5 +1,6 @@
 using LvvErp.Domain.Common;
 using LvvErp.Domain.Features.Employees;
+using LvvErp.Domain.Features.Purchasing;
 
 namespace LvvErp.Domain.Features.Inventory;
 
@@ -68,6 +69,10 @@ public class StockDocument : AuditableEntity
     public Guid? EmployeeId { get; set; }
     public Employee? Employee { get; set; }
 
+    /// <summary>Receipt (reason Purchase) of goods on this purchase order; every line then names its order line.</summary>
+    public Guid? PurchaseOrderId { get; set; }
+    public PurchaseOrder? PurchaseOrder { get; set; }
+
     public string? Note { get; set; }
 
     public DateTimeOffset? ApprovedAt { get; set; }
@@ -132,6 +137,10 @@ public class StockDocumentLine : Entity
     public string? LotNumber { get; set; }
     public DateOnly? ManufactureDate { get; set; }
     public DateOnly? ExpiryDate { get; set; }
+
+    /// <summary>Order line received by this line (receipts from a purchase order only).</summary>
+    public Guid? PurchaseOrderLineId { get; set; }
+    public PurchaseOrderLine? PurchaseOrderLine { get; set; }
 
     public decimal Quantity { get; set; }
     public string? Note { get; set; }

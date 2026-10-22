@@ -52,3 +52,16 @@ export function formatDateTime(iso: string | null | undefined, language: string)
     minute: '2-digit',
   })
 }
+
+const moneyFormatters = new Map<string, Intl.NumberFormat>()
+
+/** Whole đồng with thousands grouping: "1.250.000" (vi), "1,250,000" (en). Unit prices may have 2 decimals. */
+export function formatMoney(value: number, language: string, maximumFractionDigits = 0): string {
+  const key = `${language}|${maximumFractionDigits}`
+  let formatter = moneyFormatters.get(key)
+  if (!formatter) {
+    formatter = new Intl.NumberFormat(language === 'vi' ? 'vi-VN' : 'en-US', { maximumFractionDigits })
+    moneyFormatters.set(key, formatter)
+  }
+  return formatter.format(value)
+}

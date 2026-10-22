@@ -9,7 +9,10 @@ public sealed record UserDto(
     bool IsActive,
     DateTimeOffset? LastLoginAt,
     DateTimeOffset CreatedAt,
-    Guid? EmployeeId);
+    Guid? EmployeeId,
+    string? EmployeeCode,
+    string? EmployeeName,
+    string? DepartmentName);
 
 public sealed record CreateUserRequest(
     string UserName,

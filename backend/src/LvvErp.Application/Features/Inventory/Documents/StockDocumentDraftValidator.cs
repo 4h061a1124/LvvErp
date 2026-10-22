@@ -42,6 +42,19 @@ public sealed class StockDocumentDraftValidator : AbstractValidator<StockDocumen
             line.RuleFor(l => l.Note).MaximumLength(StockDocumentLine.NoteMaxLength);
         });
 
+        // Receiving against a purchase order: purchase receipts only, and then every line names its order line.
+        RuleFor(x => x.PurchaseOrderId)
+            .Null().When(x => x.Type != StockDocumentType.Receipt || x.Reason != StockDocumentReason.Purchase)
+            .WithMessage("Only purchase receipts can be linked to a purchase order.");
+        RuleForEach(x => x.Lines)
+            .Must(l => l.PurchaseOrderLineId is not null)
+            .When(x => x.PurchaseOrderId is not null)
+            .WithMessage("Each line must name the order line it receives.");
+        RuleForEach(x => x.Lines)
+            .Must(l => l.PurchaseOrderLineId is null)
+            .When(x => x.PurchaseOrderId is null)
+            .WithMessage("Order lines can only be given with a purchase order.");
+
         RuleForEach(x => x.Lines)
             .Must((draft, l) => draft.WarehouseId != draft.ToWarehouseId || l.LocationId != l.ToLocationId)
             .When(x => x.Type == StockDocumentType.Transfer)

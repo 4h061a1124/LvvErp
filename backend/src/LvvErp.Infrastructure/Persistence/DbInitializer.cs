@@ -2,6 +2,7 @@ using LvvErp.Application.Common.Interfaces;
 using LvvErp.Domain.Features.Employees;
 using LvvErp.Domain.Features.Identity;
 using LvvErp.Domain.Features.Inventory;
+using LvvErp.Domain.Features.Purchasing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
@@ -26,6 +27,9 @@ public sealed class DbInitializer(
     IOptions<SeedOptions> seedOptions,
     ILogger<DbInitializer> logger)
 {
+    /// <summary>Default purchasing department; its head approves orders under the director threshold.</summary>
+    private const string PurchasingDepartmentCode = "MH";
+
     private static readonly (string Code, string Name)[] DefaultDepartments =
     [
         ("BGD", "Ban giám đốc"),
@@ -81,7 +85,25 @@ public sealed class DbInitializer(
         await db.Database.MigrateAsync(ct);
         await SeedLookupsAsync(ct);
         await SeedInventoryCatalogAsync(ct);
+        await SeedPurchasingSettingsAsync(ct);
         await SeedAdminAsync(ct);
+    }
+
+    private async Task SeedPurchasingSettingsAsync(CancellationToken ct)
+    {
+        if (await db.PurchasingSettings.AnyAsync(ct)) return;
+
+        var purchasingDepartmentId = await db.Departments
+            .Where(d => d.Code == PurchasingDepartmentCode)
+            .Select(d => (Guid?)d.Id)
+            .FirstOrDefaultAsync(ct);
+        db.PurchasingSettings.Add(new PurchasingSettings
+        {
+            Id = PurchasingSettings.SingletonId,
+            PurchasingDepartmentId = purchasingDepartmentId,
+        });
+        await db.SaveChangesAsync(ct);
+        logger.LogInformation("Seeded purchasing settings.");
     }
 
     private async Task SeedLookupsAsync(CancellationToken ct)

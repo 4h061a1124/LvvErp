@@ -46,13 +46,13 @@ public sealed class AuthService(
         await db.SaveChangesAsync(ct);
 
         var token = tokenService.CreateAccessToken(user);
-        return new LoginResponse(token.Token, token.ExpiresAt, ToCurrentUserDto(user));
+        return new LoginResponse(token.Token, token.ExpiresAt, await BuildCurrentUserAsync(user.Id, ct));
     }
 
     public async Task<CurrentUserDto> GetCurrentUserAsync(CancellationToken ct = default)
     {
-        var user = await GetCurrentUserEntityAsync(ct);
-        return ToCurrentUserDto(user);
+        var userId = currentUser.UserId ?? throw new UnauthorizedException("Not authenticated.");
+        return await BuildCurrentUserAsync(userId, ct);
     }
 
     public async Task ChangePasswordAsync(ChangePasswordRequest request, CancellationToken ct = default)
@@ -76,12 +76,20 @@ public sealed class AuthService(
             ?? throw new UnauthorizedException("Not authenticated.");
     }
 
-    private static CurrentUserDto ToCurrentUserDto(User user) => new(
-        user.Id,
-        user.UserName,
-        user.FullName,
-        user.Email,
-        user.Roles,
-        RolePermissions.ForRoles(user.Roles),
-        user.EmployeeId);
+    private async Task<CurrentUserDto> BuildCurrentUserAsync(Guid userId, CancellationToken ct)
+    {
+        var u = await db.Users.AsNoTracking()
+            .Where(x => x.Id == userId)
+            .Select(x => new
+            {
+                x.Id, x.UserName, x.FullName, x.Email, x.Roles,
+                EmployeeId = x.Employee != null ? x.EmployeeId : null,
+                DepartmentId = x.Employee != null ? (Guid?)x.Employee.DepartmentId : null,
+                DepartmentName = x.Employee != null ? x.Employee.Department.Name : null,
+            })
+            .SingleOrDefaultAsync(ct) ?? throw new UnauthorizedException("Not authenticated.");
+
+        return new CurrentUserDto(u.Id, u.UserName, u.FullName, u.Email, u.Roles, RolePermissions.ForRoles(u.Roles),
+            u.EmployeeId, u.DepartmentId, u.DepartmentName);
+    }
 }

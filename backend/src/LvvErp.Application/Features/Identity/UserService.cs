@@ -24,13 +24,11 @@ public sealed class UserService(
     IValidator<UpdateUserRequest> updateValidator) : IUserService
 {
     public async Task<IReadOnlyList<UserDto>> ListAsync(CancellationToken ct = default) =>
-        await db.Users.AsNoTracking()
-            .OrderBy(u => u.UserName)
-            .Select(u => ToDto(u))
-            .ToListAsync(ct);
+        await db.Users.AsNoTracking().OrderBy(u => u.UserName).Select(ToDto).ToListAsync(ct);
 
     public async Task<UserDto> GetAsync(Guid id, CancellationToken ct = default) =>
-        ToDto(await FindAsync(id, ct));
+        await db.Users.AsNoTracking().Where(u => u.Id == id).Select(ToDto).SingleOrDefaultAsync(ct)
+        ?? throw NotFoundException.For<User>(id);
 
     public async Task<UserDto> CreateAsync(CreateUserRequest request, CancellationToken ct = default)
     {
@@ -38,7 +36,7 @@ public sealed class UserService(
 
         var userName = User.NormalizeUserName(request.UserName);
         if (await db.Users.AnyAsync(u => u.UserName == userName, ct))
-            throw new ConflictException($"Username '{userName}' is already taken.");
+            throw new ConflictException($"Username '{userName}' is already taken.", ErrorCodes.DuplicateUserName);
         await EnsureEmployeeLinkableAsync(request.EmployeeId, userId: null, ct);
 
         var user = new User
@@ -53,7 +51,7 @@ public sealed class UserService(
         db.Users.Add(user);
         await db.SaveChangesAsync(ct);
 
-        return ToDto(user);
+        return await GetAsync(user.Id, ct);
     }
 
     public async Task<UserDto> UpdateAsync(Guid id, UpdateUserRequest request, CancellationToken ct = default)
@@ -67,9 +65,9 @@ public sealed class UserService(
         if (user.Id == currentUser.UserId)
         {
             if (!request.IsActive)
-                throw new ConflictException("You cannot deactivate your own account.");
+                throw new ConflictException("You cannot deactivate your own account.", ErrorCodes.CannotChangeOwnAccess);
             if (user.Roles.Contains(Roles.Admin) && !roles.Contains(Roles.Admin))
-                throw new ConflictException("You cannot remove your own Admin role.");
+                throw new ConflictException("You cannot remove your own Admin role.", ErrorCodes.CannotChangeOwnAccess);
         }
         await EnsureEmployeeLinkableAsync(request.EmployeeId, user.Id, ct);
 
@@ -90,7 +88,7 @@ public sealed class UserService(
             user.RotateSecurityStamp();
 
         await db.SaveChangesAsync(ct);
-        return ToDto(user);
+        return await GetAsync(user.Id, ct);
     }
 
     private async Task EnsureEmployeeLinkableAsync(Guid? employeeId, Guid? userId, CancellationToken ct)
@@ -101,12 +99,17 @@ public sealed class UserService(
             throw new ValidationException([new ValidationFailure("EmployeeId", "Employee does not exist.")]);
 
         if (await db.Users.AnyAsync(u => u.EmployeeId == employeeId && u.Id != userId, ct))
-            throw new ConflictException("This employee is already linked to another account.");
+            throw new ConflictException("This employee is already linked to another account.", ErrorCodes.EmployeeAlreadyLinked);
     }
 
     private async Task<User> FindAsync(Guid id, CancellationToken ct) =>
         await db.Users.SingleOrDefaultAsync(u => u.Id == id, ct) ?? throw NotFoundException.For<User>(id);
 
-    private static UserDto ToDto(User u) =>
-        new(u.Id, u.UserName, u.FullName, u.Email, u.Roles, u.IsActive, u.LastLoginAt, u.CreatedAt, u.EmployeeId);
+    // A soft-deleted employee drops out through the query filter, so the link shows as empty.
+    private static readonly System.Linq.Expressions.Expression<Func<User, UserDto>> ToDto = u => new UserDto(
+        u.Id, u.UserName, u.FullName, u.Email, u.Roles, u.IsActive, u.LastLoginAt, u.CreatedAt,
+        u.Employee != null ? u.EmployeeId : null,
+        u.Employee != null ? u.Employee.Code : null,
+        u.Employee != null ? u.Employee.FullName : null,
+        u.Employee != null ? u.Employee.Department.Name : null);
 }

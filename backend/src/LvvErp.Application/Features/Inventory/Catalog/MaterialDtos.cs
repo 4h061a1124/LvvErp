@@ -11,6 +11,7 @@ public sealed record MaterialDto(
     string GroupName,
     decimal MinStock,
     bool TrackLots,
+    decimal ReceiptTolerancePercent,
     string? PhotoUrl,
     bool IsActive,
     DateTimeOffset CreatedAt,
@@ -41,4 +42,5 @@ public sealed record SaveMaterialRequest(
     Guid GroupId,
     decimal MinStock,
     bool TrackLots,
-    bool IsActive = true);
+    bool IsActive = true,
+    decimal ReceiptTolerancePercent = 0);

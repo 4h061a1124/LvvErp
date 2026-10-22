@@ -2,7 +2,7 @@
 
 Hệ thống ERP nội bộ cho nhà máy. Phiên bản hiện tại có:
 
-- Đăng nhập (JWT), phân quyền theo role: **Admin**, **HR**, **Employee**, **Thủ kho**
+- Đăng nhập (JWT), phân quyền theo role: **Admin**, **HR**, **Employee**, **Thủ kho**, **Nhân viên mua hàng**, **Trưởng bộ phận**, **Giám đốc**; giao diện quản lý tài khoản cho Admin
 - **Danh bạ nhân viên**: ảnh, mã NV, họ tên, bộ phận, chức danh, email, số điện thoại, trạng thái; tìm kiếm không dấu, lọc, phân trang; thêm/sửa/xóa; nhập từ Excel
 - **Vật tư & Kho**:
   - Danh mục đơn vị tính, nhóm vật tư, vật tư (ảnh, quy cách, tồn tối thiểu, quản lý theo lô), kho và vị trí
@@ -10,6 +10,11 @@ Hệ thống ERP nội bộ cho nhà máy. Phiên bản hiện tại có:
   - Tồn kho theo kho/vị trí/lô, thẻ kho, cảnh báo dưới tồn tối thiểu
   - In tem QR (A4 24 tem hoặc tem cuộn 50 × 30 mm), đọc mã bằng máy quét
   - Nhập danh mục vật tư và tồn đầu kỳ từ Excel
+- **Mua hàng**:
+  - Danh mục nhà cung cấp (mã số thuế, công nợ), nhập từ Excel
+  - Đề nghị mua hàng theo bộ phận: Nháp → Chờ duyệt → Đã duyệt / Từ chối, Trưởng bộ phận duyệt
+  - Đơn đặt hàng gộp từ các dòng đề nghị đã duyệt; duyệt theo hạn mức (Trưởng phòng mua hàng / Giám đốc); gợi ý giá gần nhất; in đơn A4
+  - Nhận hàng từ đơn (nhận từng phần, dung sai nhận dư theo vật tư), báo cáo đơn quá hạn giao, lịch sử giá
 - Giao diện tiếng Việt / tiếng Anh, dùng được trên điện thoại
 
 | Phần | Công nghệ |
@@ -64,18 +69,24 @@ Mở http://localhost:5173 và đăng nhập:
 
 > Mật khẩu này chỉ dùng cho môi trường dev (nằm trong `appsettings.Development.json`). Hãy đổi ngay sau khi đăng nhập nếu dùng chung máy chủ.
 
-Tài khoản HR / Employee / Thủ kho (`Storekeeper`) được tạo bằng API `POST /api/users` (cần quyền Admin, thử trực tiếp trên trang Scalar).
+Tạo tài khoản cho người dùng khác ở **Quản trị → Tài khoản** (đăng nhập bằng admin). Muốn lập đề nghị mua hàng, tài khoản phải được **gắn với một nhân viên**: bộ phận của nhân viên đó là bộ phận lập đề nghị và Trưởng bộ phận của bộ phận đó là người duyệt.
 
 ### Quyền theo role
 
-| | Admin | HR | Employee | Thủ kho |
-|---|:-:|:-:|:-:|:-:|
-| Xem danh bạ nhân viên | ✓ | ✓ | ✓ | ✓ |
-| Thêm/sửa/xóa, nhập Excel nhân viên | ✓ | ✓ | | |
-| Xem danh mục kho, phiếu, tồn kho, thẻ kho | ✓ | ✓ | ✓ | ✓ |
-| Sửa danh mục kho, lập và duyệt phiếu, nhập Excel kho | ✓ | | | ✓ |
-| Hủy phiếu đã duyệt | ✓ | | | |
-| Quản lý tài khoản | ✓ | | | |
+| | Admin | HR | Employee | Thủ kho | NV mua hàng | Trưởng bộ phận | Giám đốc |
+|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
+| Xem danh bạ nhân viên, danh mục kho, tồn kho | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Thêm/sửa/xóa, nhập Excel nhân viên | ✓ | ✓ | | | | | |
+| Sửa danh mục kho, lập và duyệt phiếu kho | ✓ | | | ✓ | | | |
+| Hủy phiếu kho đã duyệt | ✓ | | | | | | |
+| Lập đề nghị mua hàng cho bộ phận mình | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| Xem nhà cung cấp, mọi đề nghị, đơn đặt hàng, báo cáo mua hàng | ✓ | | | ✓ | ✓ | ✓ | ✓ |
+| Quản lý nhà cung cấp, lập đơn đặt hàng | ✓ | | | | ✓ | | |
+| Duyệt đề nghị mua hàng | | | | | | bộ phận mình | mọi bộ phận |
+| Duyệt đơn đặt hàng | | | | | | Trưởng phòng mua hàng, dưới hạn mức | mọi mức |
+| Cài đặt mua hàng, quản lý tài khoản | ✓ | | | | | | |
+
+Không ai duyệt được chứng từ do chính mình lập. Admin cấu hình hệ thống nhưng không duyệt chứng từ có tiền.
 
 ## Sử dụng module Kho
 
@@ -94,6 +105,19 @@ Tài khoản HR / Employee / Thủ kho (`Storekeeper`) được tạo bằng API
 
 Tồn tối thiểu được so với **tổng tồn của mọi kho**.
 
+## Sử dụng module Mua hàng
+
+**Chuẩn bị (Admin):** vào **Mua hàng → Cài đặt mua hàng**: đặt hạn mức duyệt của Giám đốc (mặc định 50.000.000đ, so với tổng tiền đã gồm VAT), chọn phòng mua hàng (mặc định bộ phận `MH`) và nhập thông tin công ty in trên đơn. Ở **Quản trị → Tài khoản**, gắn tài khoản với nhân viên và gán role Trưởng bộ phận / Nhân viên mua hàng / Giám đốc. Nhân viên mua hàng nhập danh mục **Nhà cung cấp** (thêm tay hoặc nhập Excel).
+
+**Quy trình:**
+1. **Đề nghị mua hàng** (mọi người): **Tạo đề nghị**, quét hoặc gõ mã vật tư, nhập số lượng, ngày cần, mục đích → **Lưu và gửi duyệt**.
+2. **Trưởng bộ phận** của bộ phận đó (hoặc Giám đốc) duyệt ở **Chờ tôi duyệt**. Từ chối phải ghi lý do; người lập sửa rồi gửi lại.
+3. **Đơn đặt hàng** (nhân viên mua hàng): **Tạo đơn đặt hàng**, chọn nhà cung cấp và kho nhận, **Thêm từ đề nghị** để chọn các dòng đề nghị đã duyệt (cùng vật tư tự gộp một dòng), nhập đơn giá (bấm "Giá gần nhất" để dùng lại giá đã duyệt) → **Lưu và gửi duyệt**. Đặt nhiều hơn số đề nghị phải ghi lý do.
+4. Đơn dưới hạn mức do **Trưởng phòng mua hàng** duyệt, từ hạn mức trở lên do **Giám đốc** duyệt. Đơn đã duyệt bấm **In đơn** để in A4 gửi nhà cung cấp.
+5. **Nhận hàng** (thủ kho): mở đơn, bấm **Nhận hàng** → phiếu nhập điền sẵn phần còn thiếu; sửa theo thực nhận, **Lưu và duyệt**. Nhận được nhiều lần. Không được nhận quá số đặt cộng **dung sai nhận dư** của vật tư (sửa trong form vật tư, mặc định 0%).
+
+Đề nghị không cần nữa thì **Hủy** (khi chưa lên đơn) hoặc **Đóng** (khi đã đặt một phần). Đơn đã nhận một phần mà nhà cung cấp không giao tiếp thì **Đóng đơn**. **Báo cáo mua hàng** có tổng hợp theo trạng thái, hàng quá hạn giao và lịch sử giá theo vật tư.
+
 ## Nhập Excel
 
 Mọi file import dùng chung quy tắc: tải **file mẫu** từ màn hình nhập, điền từ dòng 2, không đổi thứ tự/tên cột; danh mục (bộ phận, ĐVT, kho…) chọn từ danh sách hoặc gõ mã/tên, không phân biệt hoa thường hay có dấu; số thập phân ghi `12,5` hoặc `12.5`; ngày ghi `dd/MM/yyyy`. Có bất kỳ dòng nào lỗi thì toàn bộ file không được lưu, màn hình liệt kê lỗi theo dòng và cột.
@@ -103,6 +127,7 @@ Mọi file import dùng chung quy tắc: tải **file mẫu** từ màn hình nh
 | Nhân viên | Danh bạ nhân viên → Nhập Excel | Mã NV, Họ tên, Bộ phận, Chức danh |
 | Danh mục vật tư | Vật tư → Nhập Excel | Mã vật tư, Tên, ĐVT, Nhóm (Quản lý lô: Có/Không) |
 | Tồn đầu kỳ | Phiếu nhập → Nhập tồn đầu kỳ | Mã vật tư, Kho, Số lượng (+ Số lô với vật tư quản lý lô) |
+| Nhà cung cấp | Nhà cung cấp → Nhập Excel | Mã NCC, Tên (Mã số thuế: 10 số hoặc 10 số-3 số, không trùng NCC khác) |
 
 ### Nhân viên
 
@@ -188,6 +213,8 @@ CLAUDE.md    Kiến trúc và quy ước code (đọc trước khi phát triển
 | Integration test lỗi khi khởi tạo | Kiểm tra Docker Desktop đang chạy |
 | Frontend báo "Không kết nối được máy chủ" | Kiểm tra API đang chạy ở cổng 5080 |
 | Trang kho báo lỗi sau khi cập nhật code | Khởi động lại API để áp migration mới |
+| Không lập được đề nghị mua hàng ("chưa gắn với nhân viên") | Admin gắn tài khoản với một nhân viên ở **Quản trị → Tài khoản** |
+| Trưởng bộ phận không thấy đề nghị cần duyệt | Kiểm tra tài khoản đã gắn nhân viên thuộc đúng bộ phận và có role Trưởng bộ phận |
 | Tem in bị lệch hoặc thu nhỏ | Trong hộp thoại in: đúng khổ giấy, tỷ lệ 100% (không "Fit to page"), lề "None", tắt đầu/chân trang |
 | Ô ngày hiện `mm/dd/yyyy` | Định dạng theo ngôn ngữ trình duyệt/Windows; đặt ngôn ngữ Tiếng Việt để hiện `dd/mm/yyyy` |
 | Xóa sạch dữ liệu dev | `docker compose down -v` rồi chạy lại API |

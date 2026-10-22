@@ -9,6 +9,9 @@ export interface CurrentUser {
   roles: string[]
   permissions: string[]
   employeeId: string | null
+  /** Department of the linked employee; purchase requests are raised for it. */
+  departmentId: string | null
+  departmentName: string | null
 }
 
 export type AuthStatus = 'loading' | 'authenticated' | 'anonymous'

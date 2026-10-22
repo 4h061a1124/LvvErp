@@ -65,6 +65,7 @@ public sealed class MaterialConfiguration : IEntityTypeConfiguration<Material>
         builder.Property(m => m.Name).HasMaxLength(Material.NameMaxLength).UseCollation(AppDbContext.VietnameseCollation);
         builder.Property(m => m.Specification).HasMaxLength(Material.SpecificationMaxLength);
         builder.Property(m => m.MinStock).HasPrecision(18, 3);
+        builder.Property(m => m.ReceiptTolerancePercent).HasPrecision(5, 2);
         builder.Property(m => m.PhotoPath).HasMaxLength(300);
         builder.Property(m => m.CreatedBy).HasMaxLength(50);
         builder.Property(m => m.UpdatedBy).HasMaxLength(50);
@@ -73,7 +74,11 @@ public sealed class MaterialConfiguration : IEntityTypeConfiguration<Material>
         builder.HasOne(m => m.Group).WithMany().HasForeignKey(m => m.GroupId).OnDelete(DeleteBehavior.Restrict);
         builder.HasIndex(m => m.GroupId);
 
-        builder.ToTable(t => t.HasCheckConstraint("ck_materials_min_stock", "min_stock >= 0"));
+        builder.ToTable(t =>
+        {
+            t.HasCheckConstraint("ck_materials_min_stock", "min_stock >= 0");
+            t.HasCheckConstraint("ck_materials_receipt_tolerance", "receipt_tolerance_percent BETWEEN 0 AND 100");
+        });
     }
 }
 

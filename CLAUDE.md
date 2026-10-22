@@ -1,8 +1,9 @@
 # LvvErp – hướng dẫn cho Claude và người phát triển
 
 ERP nội bộ cho nhà máy. Module hiện có:
-- **Danh bạ nhân viên** (kèm đăng nhập, phân quyền, quản lý tài khoản qua API)
+- **Danh bạ nhân viên** (kèm đăng nhập, phân quyền, giao diện quản lý tài khoản)
 - **Vật tư & Kho**: danh mục, phiếu nhập/xuất/chuyển, tồn theo lô, tồn kho, thẻ kho, cảnh báo, tem QR, import Excel
+- **Mua hàng**: nhà cung cấp, đề nghị mua hàng theo bộ phận, đơn đặt hàng duyệt theo hạn mức, in đơn A4, nhận hàng từ đơn, báo cáo
 
 Người dùng cuối là người Việt: giao diện mặc định tiếng Việt, có tiếng Anh.
 
@@ -21,7 +22,7 @@ docker-compose.yml           PostgreSQL 17 (+ pgAdmin với --profile tools)
 ```
 
 Mỗi module nằm trong `Features/<Module>/` ở cả 4 project backend và `src/features/<module>/` ở frontend.
-Module hiện có: `Identity` (đăng nhập, tài khoản), `Employees` (nhân viên, bộ phận, chức danh, import), `Inventory` (xem mục riêng bên dưới).
+Module hiện có: `Identity` (đăng nhập, tài khoản), `Employees` (nhân viên, bộ phận, chức danh, import), `Inventory`, `Purchasing` (xem các mục riêng bên dưới). Frontend có thêm `features/users` (quản lý tài khoản) và `features/dashboard`.
 
 ## Lệnh thường dùng
 
@@ -61,7 +62,7 @@ Controller (mỏng, chỉ gọi service) → `I<Xxx>Service` trong Application �
 | Vi phạm khóa ngoại khi **xóa** | 409 `errorCode: InUse` (không cần tự kiểm tra từng bảng tham chiếu) |
 | `UnauthorizedException` / `ForbiddenException` | 401 / 403 |
 
-- Mã lỗi 409 nằm ở `Application/Common/Exceptions/AppExceptions.cs` (`ErrorCodes`): `DuplicateCode`, `DuplicateName`, `InUse`, `DocumentNotDraft`, `DocumentNotApproved`, `InsufficientStock` (details = danh sách `{lineNo, materialCode, lotNumber, requested, available}`), `TrackLotsLocked`. Thêm mã mới thì thêm bản dịch `errors.codes.*` ở frontend.
+- Mã lỗi 409 nằm ở `Application/Common/Exceptions/AppExceptions.cs` (`ErrorCodes`): `DuplicateCode`, `DuplicateName`, `DuplicateTaxCode`, `DuplicateUserName`, `EmployeeAlreadyLinked`, `CannotChangeOwnAccess`, `InUse`, `DocumentNotDraft`, `DocumentNotApproved`, `InvalidStatus` (thao tác không hợp với trạng thái hiện tại), `InsufficientStock` (details = danh sách `{lineNo, materialCode, lotNumber, requested, available}`), `TrackLotsLocked`, `NoDepartment`, `RequestHasOrders`, `RequestHasOpenOrders` (details = số các đơn), `OverReceipt` (details = danh sách `{lineNo, materialCode, ordered, received, receiving, allowed}`). Thêm mã mới thì thêm bản dịch `errors.codes.*` ở frontend.
 - Mọi lỗi, kể cả 401/403/404 do framework sinh, đều trả `ProblemDetails` (RFC 7807). Message server viết bằng tiếng Anh; frontend dịch theo `errorCode`/status.
 
 ### Dữ liệu
@@ -75,20 +76,28 @@ Controller (mỏng, chỉ gọi service) → `I<Xxx>Service` trong Application �
 - Mã nghiệp vụ chuẩn hóa trước khi lưu và so sánh: mã chữ hoa (`NormalizeCode`), tên đăng nhập chữ thường.
 - Ngày nghiệp vụ ("hôm nay") lấy từ `BusinessClock` (giờ Việt Nam), không dùng `DateTime.Now`.
 - Transaction: dùng `DbTransactionScope.BeginAsync(db)`. Scope tự tham gia transaction đang có, chỉ scope mở ra mới commit, nên service dùng riêng được mà cũng gộp được vào thao tác lớn "có lỗi thì không lưu gì" (import tồn đầu kỳ).
+- Khóa dòng: `IRowLocker.LockAsync<TEntity>(ids)` (`SELECT … FOR UPDATE`, theo thứ tự id, tên bảng lấy từ model EF). Số chứng từ (`PN`, `PX`, `PC`, `DN`, `DH`) cấp qua `IStockLedger.NextDocumentNumberAsync`.
+- Tiền: VND làm tròn đến đồng (`decimal(18,0)`), đơn giá tối đa 2 số lẻ (`decimal(18,2)`), làm tròn nửa xa số 0 (`PurchasingRules.RoundMoney`; frontend `orderModel.roundMoney` phải cho cùng kết quả).
 
 ### Phân quyền
-- Role: `Admin`, `HR`, `Employee`, `Storekeeper` (thủ kho) (`Domain/Features/Identity/Roles.cs`).
+- Role: `Admin`, `HR`, `Employee`, `Storekeeper` (thủ kho), `Purchaser` (nhân viên mua hàng), `DepartmentHead` (trưởng bộ phận), `Director` (giám đốc) (`Domain/Features/Identity/Roles.cs`).
 - Quyền gán cho role ở **một chỗ duy nhất**: `Application/Common/Security/Permissions.cs`. Tên quyền cũng là tên policy.
 
-| Quyền | Admin | HR | Employee | Thủ kho |
-|---|:-:|:-:|:-:|:-:|
-| `Employees.View` | ✓ | ✓ | ✓ | ✓ |
-| `Employees.Manage` | ✓ | ✓ | | |
-| `Users.Manage` | ✓ | | | |
-| `Inventory.View` (danh mục, phiếu, tồn, thẻ kho – chỉ xem) | ✓ | ✓ | ✓ | ✓ |
-| `Inventory.ManageCatalog`, `Inventory.EditDocuments`, `Inventory.ApproveDocuments` | ✓ | | | ✓ |
-| `Inventory.CancelDocuments` | ✓ | | | |
+| Quyền | Admin | HR | Employee | Thủ kho | Mua hàng | Trưởng BP | Giám đốc |
+|---|:-:|:-:|:-:|:-:|:-:|:-:|:-:|
+| `Employees.View`, `Inventory.View` | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `Employees.Manage` | ✓ | ✓ | | | | | |
+| `Users.Manage`, `Inventory.CancelDocuments`, `Purchasing.ManageSettings` | ✓ | | | | | | |
+| `Inventory.ManageCatalog`, `Inventory.EditDocuments`, `Inventory.ApproveDocuments` | ✓ | | | ✓ | | | |
+| `Purchasing.CreateRequests` (đề nghị cho bộ phận mình) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ |
+| `Purchasing.View` (NCC, mọi đề nghị, đơn, báo cáo) | ✓ | | | ✓ | ✓ | ✓ | ✓ |
+| `Purchasing.ManageSuppliers`, `Purchasing.ManageOrders` | ✓ | | | | ✓ | | |
+| `Purchasing.ApproveRequests`, `Purchasing.ApproveOrders` (`MoneyApprovals`) | | | | | | ✓ | ✓ |
 
+- **Admin có mọi quyền trừ `Permissions.MoneyApprovals`**: cấu hình hệ thống nhưng không duyệt chứng từ có tiền. Có unit test giữ quy tắc này.
+- Quyền chỉ là điều kiện cần. Quy tắc theo người/bộ phận nằm trong service, dùng `IUserScopeProvider` (`UserScope`: userId, userName, roles, employeeId, departmentId; đọc lại từ DB mỗi request) và các hàm thuần `PurchasingRules.CanApproveRequest`/`CanApproveOrder`. Bộ phận của người dùng = bộ phận của nhân viên gắn với tài khoản; chưa gắn thì không lập được đề nghị (409 `NoDepartment`).
+- **Không ai duyệt chứng từ do mình lập** (đề nghị: so `RequesterId`; đơn: so `CreatedBy` và `SubmittedBy`).
+- DTO chi tiết đề nghị/đơn trả về `actions` (canEdit, canApprove…) tính bằng chính các quy tắc đó; frontend ẩn/hiện nút theo `actions`, không tự suy luận lại.
 - Controller dùng `[Authorize(Policy = Permissions.Xxx)]`. Mặc định mọi endpoint yêu cầu đăng nhập; endpoint công khai phải ghi rõ `[AllowAnonymous]`.
 - JWT có claim `sstamp`. Đổi mật khẩu, đổi role hoặc khóa tài khoản sẽ đổi security stamp, mọi token cũ bị từ chối ngay.
 - Frontend nhận danh sách quyền từ `/api/auth/me`; thêm quyền mới phải cập nhật cả `frontend/src/lib/permissions.ts`.
@@ -118,6 +127,17 @@ Controller (mỏng, chỉ gọi service) → `I<Xxx>Service` trong Application �
 - **Tồn tối thiểu** so với **tổng tồn mọi kho**.
 - **Tem QR:** nội dung QR là mã vật tư (chữ thuần). Trang `/inventory/labels` nhận danh sách tem qua router state; in A4 3×8 (70×36 mm) hoặc tem cuộn 50×30 mm bằng `@page`. Không đổi kích thước tem (giấy tem cắt sẵn).
 
+## Module Mua hàng (Purchasing)
+
+- **Nhà cung cấp** (`Supplier`): mã duy nhất, mã số thuế duy nhất khi có (`^\d{10}(-\d{3})?$`, unique index có lọc), số ngày công nợ 0–365 (tự điền vào đơn mới). Đã có đơn thì không xóa được (409 `InUse`), chuyển "Ngừng dùng". Import Excel theo quy ước chung.
+- **Cài đặt** (`PurchasingSettings`, một dòng, `SingletonId`): hạn mức duyệt của Giám đốc (mặc định 50.000.000, so với tổng **đã gồm VAT**, từ hạn mức trở lên là Giám đốc), phòng mua hàng (seed bộ phận `MH`), thông tin công ty in trên đơn.
+- **Đề nghị mua hàng** (`PurchaseRequest`, `DN-yyyy-00001`): lập cho bộ phận của người lập; người không có `Purchasing.View` chỉ thấy đề nghị bộ phận mình (đề nghị bộ phận khác trả 404). Nháp → Chờ duyệt → Đã duyệt / Từ chối (bắt buộc lý do; người lập sửa thì quay về Nháp). Sau khi duyệt, trạng thái **tự tính** theo số đã lên đơn: Đã đặt một phần / Đã đặt đủ (`PurchasingRules.RequestStatusAfterOrdering`, gọi lại mỗi khi đơn được tạo/sửa/hủy/xóa). Hủy chỉ khi chưa lên đơn nào (409 `RequestHasOrders`); Đóng không được khi còn đơn chưa duyệt dùng đề nghị (409 `RequestHasOpenOrders`). Mỗi vật tư một dòng.
+- **Đơn đặt hàng** (`PurchaseOrder`, `DH-yyyy-00001`): mọi dòng phải lấy từ dòng đề nghị đã duyệt cùng vật tư; `PurchaseOrderLineSource` ghi dòng đơn lấy bao nhiêu từ dòng đề nghị nào (`PurchasingRules.Allocate`: phân bổ lần lượt, nguồn hết vẫn giữ dòng 0 để biết nguồn gốc). Đơn nháp cũng giữ số lượng của đề nghị. Đặt vượt phần đề nghị còn lại phải có `OverOrderReason`, người duyệt thấy lý do. Mỗi vật tư một dòng. Thành tiền dòng làm tròn đồng, VAT (KCT/0/5/8/10) tính một lần trên tổng tiền hàng. Nháp → Chờ duyệt (cấp duyệt `ApprovalLevel` chốt lúc gửi) → Đã duyệt / Từ chối (sửa được, về Nháp) → Đang nhận / Đã nhận đủ (tự tính) → Đóng (chỉ khi đã nhận một phần); Hủy khi chưa nhận gì, trả số lượng cho đề nghị.
+- **Nhận hàng**: phiếu nhập lý do `Purchase` có thể gắn `PurchaseOrderId`; khi đó mọi dòng phải có `PurchaseOrderLineId` cùng vật tư, kho phải là kho nhận của đơn, đơn phải Đã duyệt/Đang nhận. Đã nhận = tổng dòng phiếu **đã duyệt** gắn với dòng đơn. Lúc duyệt phiếu (`IPurchaseReceiving.ApplyApprovalAsync`) chặn nhận quá `đặt × (1 + dung sai%)` (`Material.ReceiptTolerancePercent`, làm tròn xuống 3 số lẻ) với 409 `OverReceipt`, rồi cập nhật trạng thái đơn; hủy phiếu thì tính lại.
+- **Ghi đồng thời**: thứ tự khóa cố định để không deadlock — phiếu kho → đơn; đơn → các đề nghị (theo id, một lần cho cả nguồn cũ lẫn mới khi sửa đơn); thao tác trên đề nghị chỉ khóa đề nghị. Có test song song cho sửa hai đơn cùng lấy một đề nghị và duyệt hai phiếu cùng nhận một đơn; đã kiểm chứng gỡ khóa thì test fail.
+- **Hộp "Chờ tôi duyệt"** (`api/purchasing/approvals`) là cùng quy tắc duyệt viết thành truy vấn; sửa quy tắc duyệt thì sửa cả hai chỗ.
+- Báo cáo: `api/purchasing/reports/summary`, `overdue-lines`; giá gần nhất `api/purchase-orders/last-prices` và lịch sử giá `price-history` chỉ tính đơn đã duyệt trở đi.
+
 ## Frontend – quy ước
 
 ```
@@ -139,6 +159,11 @@ src/locales/        vi.ts (nguồn), en.ts (bắt buộc cùng cấu trúc: ki�
 - Ô chọn có tìm kiếm: `AsyncCombobox`. Enter chạy tìm kiếm ngay và chọn bản ghi khớp chính xác, để **máy quét mã** (gõ mã + Enter) dùng được. Ô không có `<label>` thì truyền `ariaLabel`.
 - Trên điện thoại (`< md`): bảng chuyển thành danh sách thẻ; menu trái thành ngăn trượt (`< lg`). Phần không in ra giấy thêm `print:hidden`.
 - Tên file không được chỉ khác nhau chữ hoa/thường (Windows): ví dụ `documentModel.ts` cạnh `DocumentForm.tsx`.
+- Mua hàng: đề nghị, đơn, hộp duyệt và báo cáo nằm dưới `purchasingKeys.documents`; mọi mutation invalidate cả khóa này. Duyệt/hủy phiếu kho cũng invalidate nó (phiếu nhập từ đơn đổi trạng thái đơn).
+- Logic form mua hàng thuần, có test: `requests/requestModel.ts`, `orders/orderModel.ts` (gộp dòng đề nghị, tính tiền, đặt dư, `parsePrice`: tiếng Việt dấu chấm là phân cách nghìn). Số tiền bằng chữ: `lib/moneyWords.ts`.
+- Menu trái ẩn mục theo `permission`; mục "Chờ tôi duyệt" hiện số chứng từ đang chờ (gọi lại mỗi phút).
+- Ô **disabled** đăng ký bằng react-hook-form sẽ bị bỏ giá trị khi submit. Muốn khóa một trường (kho của phiếu nhập từ đơn), hiện một `Input` chỉ đọc không đăng ký, giữ giá trị trong `defaultValues`.
+- Trang in đơn đặt hàng (`/purchasing/orders/:id/print`) luôn in tiếng Việt, khổ A4 bằng `@page`; đơn chưa duyệt in kèm chữ "BẢN NHÁP".
 
 ### Phong cách giao diện (bắt buộc)
 Giao diện phải trông như phần mềm nghiệp vụ do người làm, **không có "chất AI"**:
@@ -151,7 +176,8 @@ Giao diện phải trông như phần mềm nghiệp vụ do người làm, **kh
 
 ## Kiểm thử
 - Backend: unit test cho logic thuần; integration test đi qua HTTP thật (`ApiTestBase`, `InventoryTestBase`). Dữ liệu test phải **tự tạo và có tên/mã duy nhất** (`UniqueCode()`, `UniqueName()`), vì các test dùng chung một database.
-- Thay đổi về đồng thời phải có test chạy song song (`Task.WhenAll`), và nên kiểm chứng test thực sự fail khi gỡ phần bảo vệ.
+- Thay đổi về đồng thời phải có test chạy song song (`Task.WhenAll`), và nên kiểm chứng test thực sự fail khi gỡ phần bảo vệ. Lưu ý: **tạo** chứng từ giữ khóa dòng `document_sequences` tới khi commit, nên hai lần tạo song song vốn đã chạy tuần tự; muốn kiểm chứng một khóa khác thì test bằng thao tác sửa/duyệt.
+- Test mua hàng dùng `PurchasingTestBase`: `UserInAsync("SX", Roles.DepartmentHead)` tạo nhân viên + tài khoản gắn bộ phận, `ApprovedRequestAsync(...)` tạo đề nghị đã duyệt.
 - Frontend: Vitest + Testing Library; test viết với chuỗi tiếng Việt (i18n khởi tạo trong `src/test/setup.ts`).
 - Kiểm tra giao diện thật: chạy API/Vite riêng ở cổng khác (5081/5174) với database riêng (`ConnectionStrings__Default=…lvverp_ui`) để không đụng DB dev, rồi xóa database đó khi xong.
 - Trước khi báo xong: `dotnet test` và `npm run typecheck && npm run lint && npm test && npm run build`.
@@ -170,12 +196,16 @@ Giao diện phải trông như phần mềm nghiệp vụ do người làm, **kh
 - `/files` chạy trên nhánh pipeline riêng; file không tồn tại trả 404 ngay.
 - Bản global `dotnet-ef` (9.x) không dùng được với EF Core 10; luôn dùng `dotnet dotnet-ef`.
 - Khôi phục file bằng `mv file.bak file` giữ mốc thời gian cũ, MSBuild không build lại → test chạy trên bản build cũ. Sau khi khôi phục hãy `touch` file.
-- Playwright: `emulateMedia({ media: 'screen' })` ép CSS màn hình cả khi xuất PDF; reset bằng `media: null`. Sau khi bấm link tới trang lazy-load, chờ heading của trang mới rồi mới thao tác, nếu không có thể thao tác nhầm trên trang cũ và hủy lần điều hướng.
+- Playwright: `emulateMedia({ media: 'screen' })` ép CSS màn hình cả khi xuất PDF; reset bằng `media: null`. Sau khi bấm link tới trang lazy-load, chờ heading của trang mới rồi mới thao tác, nếu không có thể thao tác nhầm trên trang cũ và hủy lần điều hướng. Chụp ảnh trang có dữ liệu thì chờ dữ liệu hiện ra trước, không chụp lúc "Đang tải...".
+- Bash heredoc hoặc `node -e` chứa nhiều dấu nháy/backtick (chuỗi locale) có thể báo `unexpected EOF`. Ghi script ra file bằng công cụ Write rồi chạy `node file.mjs`.
+- Sửa file bằng script Node: `s.replace(from, to)` diễn giải `$&`, `` $` ``, `$'` trong chuỗi thay thế (từng làm nhân đôi nửa đầu CLAUDE.md vì nội dung có regex kết thúc bằng `$`). Dùng `s.replace(from, () => to)` hoặc `split/join`.
+- Chèn chuỗi vào `vi.ts`/`en.ts` bằng script: anchor phải kết thúc đúng chỗ cần chèn (anchor kéo dài vào object con sẽ chèn nhầm vào trong object đó). `en.ts` có kiểu `Messages` nên tsc bắt thiếu/thừa key, nhưng key ghép động (`` t(`x.${a}Title`) ``) phải tự kiểm.
 
 ## Chưa làm / hạn chế hiện tại
 - Chưa có refresh token (access token 8 giờ, cấu hình `Jwt:AccessTokenMinutes`).
-- Quản lý tài khoản mới có API (`/api/users`, chỉ Admin), chưa có giao diện. Chưa có giao diện danh mục Bộ phận/Chức danh.
+- Chưa có giao diện danh mục Bộ phận/Chức danh. Danh sách tài khoản không phân trang (lọc ở trình duyệt; số tài khoản nhà máy ít).
 - Token lưu ở localStorage; ảnh xem được không cần đăng nhập (tên file không đoán được).
-- Kho: chưa có giá trị tồn (đơn giá, thành tiền), danh mục nhà cung cấp, kiểm kê, in phiếu theo mẫu 01-VT/02-VT, xuất báo cáo ra Excel.
+- Kho: chưa có giá trị tồn (đơn giá, thành tiền), kiểm kê, in phiếu theo mẫu 01-VT/02-VT, xuất báo cáo ra Excel.
+- Mua hàng: chưa có hóa đơn/thanh toán/công nợ nhà cung cấp, báo giá so sánh nhiều NCC, thông báo email. Dòng đơn chỉ lấy từ đề nghị (không có dòng tự do); phiếu nhập từ đơn phải vào đúng kho nhận của đơn. Hộp chọn dòng đề nghị hiện tối đa 100 dòng (lọc bằng ô tìm). Dung sai nhận dư chưa có trong file import vật tư. Đơn nháp/chờ duyệt vẫn giữ số lượng của đề nghị.
 - Ô chọn ngày dùng `<input type="date">`: định dạng hiển thị theo ngôn ngữ trình duyệt/Windows (máy tiếng Anh-Mỹ hiện `mm/dd/yyyy`).
 - Trang in tem nhận danh sách qua router state: tải lại trang thì danh sách trống.

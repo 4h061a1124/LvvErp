@@ -5,6 +5,7 @@ using LvvErp.Domain.Common;
 using LvvErp.Domain.Features.Employees;
 using LvvErp.Domain.Features.Identity;
 using LvvErp.Domain.Features.Inventory;
+using LvvErp.Domain.Features.Purchasing;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 
@@ -32,6 +33,14 @@ public class AppDbContext(DbContextOptions<AppDbContext> options) : DbContext(op
     public DbSet<StockTransaction> StockTransactions => Set<StockTransaction>();
     public DbSet<StockBalance> StockBalances => Set<StockBalance>();
     public DbSet<DocumentSequence> DocumentSequences => Set<DocumentSequence>();
+
+    public DbSet<Supplier> Suppliers => Set<Supplier>();
+    public DbSet<PurchasingSettings> PurchasingSettings => Set<PurchasingSettings>();
+    public DbSet<PurchaseRequest> PurchaseRequests => Set<PurchaseRequest>();
+    public DbSet<PurchaseRequestLine> PurchaseRequestLines => Set<PurchaseRequestLine>();
+    public DbSet<PurchaseOrder> PurchaseOrders => Set<PurchaseOrder>();
+    public DbSet<PurchaseOrderLine> PurchaseOrderLines => Set<PurchaseOrderLine>();
+    public DbSet<PurchaseOrderLineSource> PurchaseOrderLineSources => Set<PurchaseOrderLineSource>();
 
     public Task<IDbContextTransaction> BeginTransactionAsync(CancellationToken cancellationToken = default) =>
         Database.BeginTransactionAsync(cancellationToken);

@@ -29,6 +29,7 @@ public static class ErrorCodes
 {
     public const string DuplicateCode = "DuplicateCode";
     public const string DuplicateName = "DuplicateName";
+    public const string DuplicateTaxCode = "DuplicateTaxCode";
     /// <summary>A delete was blocked because other records reference the row.</summary>
     public const string InUse = "InUse";
     public const string DocumentNotDraft = "DocumentNotDraft";
@@ -36,4 +37,19 @@ public static class ErrorCodes
     /// <summary>Details: list of { lineNo, materialCode, lotNumber, requested, available }.</summary>
     public const string InsufficientStock = "InsufficientStock";
     public const string TrackLotsLocked = "TrackLotsLocked";
+    /// <summary>The action (submit, approve, cancel, ...) is not allowed in the document's current status.</summary>
+    public const string InvalidStatus = "InvalidStatus";
+    /// <summary>The account has no linked employee, so no department to raise a request for.</summary>
+    public const string NoDepartment = "NoDepartment";
+    /// <summary>A purchase request on a (non-cancelled) order cannot be cancelled.</summary>
+    public const string RequestHasOrders = "RequestHasOrders";
+    /// <summary>Details: numbers of the unapproved orders still drawing from the request.</summary>
+    public const string RequestHasOpenOrders = "RequestHasOpenOrders";
+    /// <summary>Details: list of { lineNo, materialCode, ordered, received, receiving, allowed } per purchase order line.</summary>
+    public const string OverReceipt = "OverReceipt";
+    public const string DuplicateUserName = "DuplicateUserName";
+    /// <summary>The employee is already linked to another account.</summary>
+    public const string EmployeeAlreadyLinked = "EmployeeAlreadyLinked";
+    /// <summary>An admin tried to deactivate their own account or remove their own Admin role.</summary>
+    public const string CannotChangeOwnAccess = "CannotChangeOwnAccess";
 }

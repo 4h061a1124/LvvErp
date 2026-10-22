@@ -9,8 +9,9 @@ import { EMPLOYEE_STATUSES, type EmployeeStatus } from '@/features/employees/typ
 import { useDocuments } from '@/features/inventory/documents/api'
 import { DOCUMENT_PATHS, type DocumentType } from '@/features/inventory/documents/types'
 import { useBelowMinStock } from '@/features/inventory/reports/api'
+import { useApprovalInbox, useOrders } from '@/features/purchasing/api'
 import { useAuth } from '@/lib/auth-context'
-import { formatQuantity } from '@/lib/format'
+import { formatDate, formatMoney, formatQuantity } from '@/lib/format'
 import { Permissions } from '@/lib/permissions'
 
 function useEmployeeCount(status?: EmployeeStatus) {
@@ -88,6 +89,8 @@ export function DashboardPage() {
         </Panel>
 
         <div className="space-y-5">
+          {(can(Permissions.PurchasingApproveRequests) || can(Permissions.PurchasingApproveOrders)) && <ApprovalPanel />}
+          {can(Permissions.PurchasingView) && <OverdueOrdersPanel />}
           {can(Permissions.InventoryView) && <LowStockPanel />}
           {can(Permissions.InventoryApproveDocuments) && <PendingDraftsPanel />}
         </div>
@@ -161,6 +164,67 @@ function PendingDraftsPanel() {
           </Link>
         ))}
       </div>
+    </Panel>
+  )
+}
+
+function ApprovalPanel() {
+  const { t } = useTranslation()
+  const inbox = useApprovalInbox()
+  const rows: [string, number | undefined][] = [
+    [t('purchasing.approvals.requests'), inbox.data?.requests.length],
+    [t('purchasing.approvals.orders'), inbox.data?.orders.length],
+  ]
+  return (
+    <Panel title={t('dashboard.approvals')} link={{ to: '/purchasing/approvals', label: t('common.viewAll') }}>
+      <div className="grid grid-cols-2 divide-x divide-zinc-100">
+        {rows.map(([label, count]) => (
+          <Link key={label} to="/purchasing/approvals" className="block px-3 py-3 hover:bg-zinc-50">
+            <div className="text-[13px] text-zinc-500">{label}</div>
+            <div className={count ? 'tabular mt-1 text-xl font-semibold text-amber-700' : 'tabular mt-1 text-xl font-semibold text-zinc-900'}>
+              {count ?? '–'}
+            </div>
+          </Link>
+        ))}
+      </div>
+    </Panel>
+  )
+}
+
+const OVERDUE_SHOWN = 5
+
+function OverdueOrdersPanel() {
+  const { t, i18n } = useTranslation()
+  const overdue = useOrders({ overdueOnly: true, page: 1, pageSize: OVERDUE_SHOWN, sort: 'expected' })
+  const items = overdue.data?.items ?? []
+  const total = overdue.data?.totalCount ?? 0
+
+  return (
+    <Panel
+      title={overdue.data ? `${t('dashboard.overdueOrders')} (${total})` : t('dashboard.overdueOrders')}
+      link={total > 0 ? { to: '/purchasing/orders?overdue=1', label: t('common.viewAll') } : undefined}
+    >
+      {overdue.isPending ? (
+        <p className="px-3 py-6 text-center text-sm text-zinc-500">{t('common.loading')}</p>
+      ) : items.length === 0 ? (
+        <p className="px-3 py-6 text-center text-sm text-zinc-500">{t('dashboard.overdueNone')}</p>
+      ) : (
+        <ul className="divide-y divide-zinc-100">
+          {items.map((o) => (
+            <li key={o.id}>
+              <Link to={`/purchasing/orders/${o.id}`} className="flex items-center gap-3 px-3 py-2 hover:bg-zinc-50">
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm text-zinc-900">{o.supplierName}</div>
+                  <div className="tabular text-xs text-zinc-500">
+                    {o.number} · {formatMoney(o.total, i18n.language)}
+                  </div>
+                </div>
+                <div className="tabular text-right text-[13px] font-medium text-red-700">{formatDate(o.expectedDate)}</div>
+              </Link>
+            </li>
+          ))}
+        </ul>
+      )}
     </Panel>
   )
 }

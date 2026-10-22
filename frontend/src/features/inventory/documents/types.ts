@@ -36,6 +36,7 @@ export interface StockDocumentLine {
   expiryDate: string | null
   quantity: number
   note: string | null
+  purchaseOrderLineId: string | null
 }
 
 export interface StockDocument {
@@ -62,6 +63,9 @@ export interface StockDocument {
   cancelledAt: string | null
   cancelledBy: string | null
   cancelReason: string | null
+  /** Receipt of goods on a purchase order. */
+  purchaseOrderId: string | null
+  purchaseOrderNumber: string | null
   lines: StockDocumentLine[]
 }
 
@@ -81,6 +85,8 @@ export interface StockDocumentSummary {
   createdBy: string | null
   createdAt: string
   approvedAt: string | null
+  purchaseOrderId: string | null
+  purchaseOrderNumber: string | null
 }
 
 export interface DocumentListParams {
@@ -103,6 +109,7 @@ export interface DocumentInput {
   departmentId?: string | null
   employeeId?: string | null
   note: string | null
+  purchaseOrderId?: string | null
   lines: {
     materialId: string
     locationId: string | null
@@ -113,7 +120,18 @@ export interface DocumentInput {
     expiryDate?: string | null
     quantity: number
     note?: string | null
+    purchaseOrderLineId?: string | null
   }[]
+}
+
+/** 409 OverReceipt details, per purchase order line. */
+export interface OverReceiptLine {
+  lineNo: number
+  materialCode: string
+  ordered: number
+  received: number
+  receiving: number
+  allowed: number
 }
 
 export interface StockShortage {

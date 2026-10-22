@@ -1,8 +1,31 @@
 import clsx from 'clsx'
-import { ArrowDownToLine, ArrowLeftRight, ArrowUpFromLine, Boxes, ClipboardList, FolderTree, LayoutGrid, Package, Ruler, Users, Warehouse, X } from 'lucide-react'
+import {
+  ArrowDownToLine,
+  ArrowLeftRight,
+  ArrowUpFromLine,
+  BarChart3,
+  Boxes,
+  ClipboardCheck,
+  ClipboardList,
+  FileText,
+  FolderTree,
+  KeyRound,
+  LayoutGrid,
+  Package,
+  Ruler,
+  Settings,
+  ShoppingCart,
+  Truck,
+  Users,
+  Warehouse,
+  X,
+} from 'lucide-react'
 import type { ComponentType } from 'react'
 import { useTranslation } from 'react-i18next'
 import { NavLink } from 'react-router'
+import { useApprovalInbox } from '@/features/purchasing/api'
+import { useAuth } from '@/lib/auth-context'
+import { Permissions, type Permission } from '@/lib/permissions'
 import type { Messages } from '@/locales/vi'
 import { BrandMark } from './BrandMark'
 
@@ -13,6 +36,10 @@ interface NavItem {
   label: NavKey
   icon: ComponentType<{ size?: number; strokeWidth?: number }>
   end?: boolean
+  /** Hidden without this permission. */
+  permission?: Permission
+  /** Shows the number of documents waiting for the user's approval. */
+  approvalCount?: boolean
 }
 
 const sections: { title?: NavKey; items: NavItem[] }[] = [
@@ -37,10 +64,36 @@ const sections: { title?: NavKey; items: NavItem[] }[] = [
       { to: '/inventory/warehouses', label: 'warehouses', icon: Warehouse },
     ],
   },
+  {
+    title: 'purchasing',
+    items: [
+      { to: '/purchasing/approvals', label: 'approvals', icon: ClipboardCheck, approvalCount: true, permission: Permissions.PurchasingApproveRequests },
+      { to: '/purchasing/requests', label: 'purchaseRequests', icon: FileText, permission: Permissions.PurchasingCreateRequests },
+      { to: '/purchasing/orders', label: 'purchaseOrders', icon: ShoppingCart, permission: Permissions.PurchasingView },
+      { to: '/purchasing/suppliers', label: 'suppliers', icon: Truck, permission: Permissions.PurchasingView },
+      { to: '/purchasing/reports', label: 'purchasingReports', icon: BarChart3, permission: Permissions.PurchasingView },
+      { to: '/purchasing/settings', label: 'purchasingSettings', icon: Settings, permission: Permissions.PurchasingManageSettings },
+    ],
+  },
+  {
+    title: 'admin',
+    items: [{ to: '/admin/users', label: 'users', icon: KeyRound, permission: Permissions.UsersManage }],
+  },
 ]
 
 export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
   const { t } = useTranslation()
+  const { can } = useAuth()
+  const isApprover = can(Permissions.PurchasingApproveRequests) || can(Permissions.PurchasingApproveOrders)
+  const inbox = useApprovalInbox(isApprover)
+  const waiting = (inbox.data?.requests.length ?? 0) + (inbox.data?.orders.length ?? 0)
+
+  const visible = sections
+    .map((section) => ({
+      ...section,
+      items: section.items.filter((item) => (item.approvalCount ? isApprover : !item.permission || can(item.permission))),
+    }))
+    .filter((section) => section.items.length > 0)
 
   return (
     <>
@@ -74,7 +127,7 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
         </div>
 
         <nav className="flex-1 overflow-y-auto py-2">
-          {sections.map((section, i) => (
+          {visible.map((section, i) => (
             <div key={i} className={clsx(i > 0 && 'mt-3')}>
               {section.title && (
                 <div className="px-4 pt-1 pb-1 text-xs font-medium text-zinc-400">{t(`nav.${section.title}`)}</div>
@@ -96,6 +149,9 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
                 >
                   <item.icon size={16} strokeWidth={1.75} />
                   {t(`nav.${item.label}`)}
+                  {item.approvalCount && waiting > 0 && (
+                    <span className="tabular ml-auto rounded-[3px] bg-amber-100 px-1.5 text-xs font-medium text-amber-800">{waiting}</span>
+                  )}
                 </NavLink>
               ))}
             </div>

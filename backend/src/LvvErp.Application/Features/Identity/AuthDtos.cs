@@ -11,6 +11,8 @@ public sealed record CurrentUserDto(
     string? Email,
     IReadOnlyList<string> Roles,
     IReadOnlyList<string> Permissions,
-    Guid? EmployeeId);
+    Guid? EmployeeId,
+    Guid? DepartmentId,
+    string? DepartmentName);
 
 public sealed record ChangePasswordRequest(string CurrentPassword, string NewPassword);

@@ -17,5 +17,8 @@ public sealed class SaveMaterialRequestValidator : AbstractValidator<SaveMateria
         RuleFor(x => x.UnitId).NotEmpty();
         RuleFor(x => x.GroupId).NotEmpty();
         RuleFor(x => x.MinStock).InclusiveBetween(0, MaxQuantity).PrecisionScale(18, 3, ignoreTrailingZeros: true);
+        RuleFor(x => x.ReceiptTolerancePercent)
+            .InclusiveBetween(0, Material.MaxReceiptTolerancePercent)
+            .PrecisionScale(5, 2, ignoreTrailingZeros: true);
     }
 }
